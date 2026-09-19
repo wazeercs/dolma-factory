@@ -1,3 +1,6 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+cat > src/components/BranchApp.jsx << 'BRANCHEOF'
 import React, { useState, useEffect } from 'react';
 import { useOrders, useBranches, useDrivers } from '../hooks/useSupabaseData';
 import { updateOrderStatus } from '../hooks/useOrdersApi';
@@ -175,3 +178,6 @@ export default function BranchApp() {
     </div>
   );
 }
+BRANCHEOF
+
+echo "✅ BranchApp.jsx تم"

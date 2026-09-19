@@ -7,9 +7,13 @@ body {
   font-family: 'Cairo', sans-serif;
   background: #f8fafc;
   margin: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
+.dark body { background: #111827; }
+
 .no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 @keyframes slideUp {
   from { transform: translateY(100%); }
@@ -17,8 +21,20 @@ body {
 }
 .animate-slide-up { animation: slideUp 0.3s ease-out; }
 
+@keyframes slideDown {
+  from { transform: translateY(-120%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-down { animation: slideDown 0.3s ease-out; }
+
 @keyframes pulse-red {
   0%, 100% { background: #dc2626; }
   50% { background: #991b1b; }
 }
 .pulse-red { animation: pulse-red 1s infinite; }
+
+@media print {
+  body * { visibility: hidden; }
+  #receipt-print, #receipt-print * { visibility: visible; }
+  #receipt-print { position: absolute; top: 0; right: 0; width: 100%; }
+}

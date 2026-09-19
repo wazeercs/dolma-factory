@@ -1,3 +1,6 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+cat > src/components/AdminApp.jsx << 'ADMINEOF'
 import React, { useState, useMemo } from 'react';
 import { useProducts, useOrders, useBranches, useDrivers } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabaseClient';
@@ -158,3 +161,6 @@ export default function AdminApp() {
     </div>
   );
 }
+ADMINEOF
+
+echo "✅ AdminApp.jsx تم"

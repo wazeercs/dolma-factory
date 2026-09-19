@@ -1,0 +1,14 @@
+{
+  "name": "دولمه فاكتوري - نظام الطلبات",
+  "short_name": "دولمه فاكتوري",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F766E",
+  "theme_color": "#0F766E",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {"src": "https://api.dicebear.com/7.x/shapes/svg?seed=dolma&backgroundColor=0F766E", "sizes": "192x192", "type": "image/svg+xml"},
+    {"src": "https://api.dicebear.com/7.x/shapes/svg?seed=dolma&backgroundColor=0F766E", "sizes": "512x512", "type": "image/svg+xml"}
+  ]
+}

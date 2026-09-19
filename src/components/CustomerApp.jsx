@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useProducts, useBranches, useOrderTracking } from '../hooks/useSupabaseData';
 import { createOrder } from '../hooks/useOrdersApi';
+import { validateCoupon } from '../hooks/useCoupons';
+import { useToast } from './Toast';
 
 const validateSaudiPhone = (phone) => {
   const cleaned = phone.replace(/\s|-/g, '');
@@ -8,6 +10,7 @@ const validateSaudiPhone = (phone) => {
 };
 
 export default function CustomerApp() {
+  const toast = useToast();
   const branches = useBranches();
   const [selectedBranch, setSelectedBranch] = useState(null);
   const { products, loading } = useProducts(selectedBranch?.id);
@@ -28,6 +31,9 @@ export default function CustomerApp() {
   const [phoneError, setPhoneError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [trackingOrderId, setTrackingOrderId] = useState(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const trackingOrder = useOrderTracking(trackingOrderId);
 
@@ -48,8 +54,8 @@ export default function CustomerApp() {
   };
 
   const addToCart = () => {
-    if (!variant) return alert('الرجاء اختيار الحجم');
-    if (sel.flavors.length > 0 && !flavor) return alert('الرجاء اختيار النكهة');
+    if (!variant) return toast.warning('الرجاء اختيار الحجم');
+    if (sel.flavors.length > 0 && !flavor) return toast.warning('الرجاء اختيار النكهة');
     setCart([
       ...cart,
       {
@@ -63,11 +69,13 @@ export default function CustomerApp() {
       },
     ]);
     setSel(null);
+    toast.success('تمت الإضافة إلى السلة 🛒');
   };
 
   const cartTotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const deliveryFee = orderType === 'delivery' ? Math.round(distanceKm * 3) : 0;
-  const grandTotal = cartTotal + deliveryFee;
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const grandTotal = Math.max(0, cartTotal + deliveryFee - discountAmount);
 
   const handlePhoneChange = (v) => {
     setPhone(v);
@@ -75,10 +83,35 @@ export default function CustomerApp() {
     else setPhoneError('');
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    try {
+      const result = await validateCoupon(couponCode, cartTotal, selectedBranch?.id);
+      if (result.valid) {
+        setAppliedCoupon(result);
+        toast.success(result.message + ' (-' + result.discountAmount + ' SR)');
+      } else {
+        setAppliedCoupon(null);
+        toast.error(result.message);
+      }
+    } catch (e) {
+      toast.error('تعذّر التحقق من الكوبون');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    toast.info('تم إلغاء الكوبون');
+  };
+
   const submitOrder = async () => {
-    if (!name.trim()) return alert('يرجى إدخال الاسم');
-    if (!validateSaudiPhone(phone)) return alert('رقم الجوال غير صحيح');
-    if (!selectedBranch) return alert('لا يوجد فرع متاح');
+    if (!name.trim()) return toast.warning('يرجى إدخال الاسم');
+    if (!validateSaudiPhone(phone)) return toast.warning('رقم الجوال غير صحيح');
+    if (!selectedBranch) return toast.warning('لا يوجد فرع متاح');
 
     setSubmitting(true);
     try {
@@ -96,9 +129,12 @@ export default function CustomerApp() {
           distanceKm: orderType === 'delivery' ? distanceKm : 0,
           subtotal: cartTotal,
           deliveryFee,
+          discount: discountAmount,
           total: grandTotal,
           paymentMethod: payMethod === 'cash' ? 'cash' : 'card',
           idempotencyKey,
+          couponId: appliedCoupon ? appliedCoupon.couponId : null,
+          couponCode: appliedCoupon ? couponCode : null,
         },
         cart
       );
@@ -107,9 +143,12 @@ export default function CustomerApp() {
       setShowCheckout(false);
       setShowTracking(true);
       setCart([]);
+      setAppliedCoupon(null);
+      setCouponCode('');
+      toast.success('تم إرسال طلبك بنجاح! 🎉');
     } catch (err) {
       console.error(err);
-      alert('حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى');
+      toast.error('حدث خطأ أثناء إرسال الطلب — تحقق من الإنترنت');
     } finally {
       setSubmitting(false);
     }
@@ -128,7 +167,7 @@ export default function CustomerApp() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-400">
+      <div className="flex items-center justify-center h-64 text-gray-400 dark:text-gray-500">
         ⏳ جاري التحميل...
       </div>
     );
@@ -140,16 +179,16 @@ export default function CustomerApp() {
         <div className="w-20 h-20 mx-auto mb-3 bg-teal-700 rounded-full flex items-center justify-center text-white text-3xl">
           🌿
         </div>
-        <h1 className="text-3xl font-black text-teal-800">دولمه فاكتوري</h1>
-        <p className="text-gray-500 text-sm mt-1">أشهى المأكولات الشرقية الطازجة</p>
+        <h1 className="text-3xl font-black text-teal-800 dark:text-teal-400">دولمه فاكتوري</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">أشهى المأكولات الشرقية الطازجة</p>
       </div>
 
       {selectedBranch && (
-        <div className="mb-4 bg-teal-50 border-2 border-teal-200 rounded-2xl p-3 flex items-center gap-3">
+        <div className="mb-4 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-200 dark:border-teal-800 rounded-2xl p-3 flex items-center gap-3">
           <span className="text-2xl">🏬</span>
           <div className="flex-1">
-            <p className="text-xs text-gray-500">الفرع المختار</p>
-            <p className="font-bold text-teal-800 text-sm">{selectedBranch.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">الفرع المختار</p>
+            <p className="font-bold text-teal-800 dark:text-teal-300 text-sm">{selectedBranch.name}</p>
           </div>
           <select
             value={selectedBranch.id}
@@ -157,12 +196,10 @@ export default function CustomerApp() {
               const b = branches.find((x) => x.id === e.target.value);
               if (b) setSelectedBranch(b);
             }}
-            className="text-xs bg-white border rounded-lg px-2 py-1 font-bold"
+            className="text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-white border dark:border-gray-600 rounded-lg px-2 py-1 font-bold"
           >
             {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
+              <option key={b.id} value={b.id}>{b.name}</option>
             ))}
           </select>
         </div>
@@ -173,12 +210,12 @@ export default function CustomerApp() {
           <div
             key={p.id}
             onClick={() => openProduct(p)}
-            className="bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer active:scale-95 transition-transform border border-gray-100"
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-gray-700"
           >
             <img src={p.image_url} alt={p.name} className="w-full h-28 object-cover" />
             <div className="p-3 text-center">
-              <h3 className="font-bold text-gray-800 text-sm">{p.name}</h3>
-              <p className="text-sm text-teal-600 font-bold mt-1">
+              <h3 className="font-bold text-gray-800 dark:text-white text-sm">{p.name}</h3>
+              <p className="text-sm text-teal-600 dark:text-teal-400 font-bold mt-1">
                 من {p.variants[0]?.price || 0} SR
               </p>
             </div>
@@ -187,7 +224,7 @@ export default function CustomerApp() {
       </div>
 
       {products.length === 0 && !loading && (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-gray-400 dark:text-gray-500">
           <p className="text-4xl mb-2">😔</p>
           <p>لا توجد منتجات متوفرة حالياً</p>
         </div>
@@ -209,26 +246,23 @@ export default function CustomerApp() {
           onClick={() => setSel(null)}
         >
           <div
-            className="bg-white w-full max-w-lg rounded-t-3xl max-h-[88vh] flex flex-col animate-slide-up"
+            className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-t-3xl max-h-[88vh] flex flex-col animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative h-44">
-              <img
-                src={sel.image_url}
-                className="w-full h-full object-cover rounded-t-3xl"
-              />
+              <img src={sel.image_url} className="w-full h-full object-cover rounded-t-3xl" />
               <button
                 onClick={() => setSel(null)}
-                className="absolute top-4 left-4 bg-white/95 w-9 h-9 rounded-full shadow-md font-bold text-lg"
+                className="absolute top-4 left-4 bg-white/95 w-9 h-9 rounded-full shadow-md font-bold text-lg text-black"
               >
                 ✕
               </button>
             </div>
             <div className="p-5 overflow-y-auto flex-1 no-scrollbar">
-              <h2 className="text-2xl font-black text-gray-800 mb-4">{sel.name}</h2>
+              <h2 className="text-2xl font-black text-gray-800 dark:text-white mb-4">{sel.name}</h2>
               {sel.flavors.length > 0 && (
                 <div className="mb-5">
-                  <h4 className="font-bold text-gray-700 mb-3">اختر النكهة:</h4>
+                  <h4 className="font-bold text-gray-700 dark:text-gray-200 mb-3">اختر النكهة:</h4>
                   <div className="flex flex-wrap gap-2">
                     {sel.flavors.map((f) => (
                       <button
@@ -237,7 +271,7 @@ export default function CustomerApp() {
                         className={`px-4 py-2 rounded-full border-2 text-sm font-bold transition-all ${
                           flavor?.id === f.id
                             ? 'bg-teal-700 text-white border-teal-700'
-                            : 'bg-white text-gray-600 border-gray-200'
+                            : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                         }`}
                       >
                         {f.name}
@@ -247,7 +281,7 @@ export default function CustomerApp() {
                 </div>
               )}
               <div className="mb-5">
-                <h4 className="font-bold text-gray-700 mb-3">اختر الحجم:</h4>
+                <h4 className="font-bold text-gray-700 dark:text-gray-200 mb-3">اختر الحجم:</h4>
                 <div className="grid grid-cols-2 gap-3">
                   {sel.variants.map((v) => (
                     <button
@@ -255,8 +289,8 @@ export default function CustomerApp() {
                       onClick={() => setVariant(v)}
                       className={`p-3 rounded-xl border-2 flex flex-col items-center transition-all ${
                         variant?.id === v.id
-                          ? 'bg-teal-50 border-teal-600 text-teal-800'
-                          : 'bg-white border-gray-200 text-gray-600'
+                          ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-600 text-teal-800 dark:text-teal-300'
+                          : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-200'
                       }`}
                     >
                       <span className="font-bold">{v.name}</span>
@@ -266,25 +300,25 @@ export default function CustomerApp() {
                 </div>
               </div>
               <div className="flex items-center justify-between mb-4">
-                <span className="font-bold text-gray-700">الكمية:</span>
-                <div className="flex items-center gap-4 bg-gray-100 rounded-full px-4 py-2">
+                <span className="font-bold text-gray-700 dark:text-gray-200">الكمية:</span>
+                <div className="flex items-center gap-4 bg-gray-100 dark:bg-gray-700 rounded-full px-4 py-2">
                   <button
                     onClick={() => setQty((q) => Math.max(1, q - 1))}
-                    className="text-2xl font-bold text-gray-600 w-8"
+                    className="text-2xl font-bold text-gray-600 dark:text-gray-300 w-8"
                   >
                     −
                   </button>
-                  <span className="font-black text-lg w-6 text-center">{qty}</span>
+                  <span className="font-black text-lg w-6 text-center text-gray-800 dark:text-white">{qty}</span>
                   <button
                     onClick={() => setQty((q) => q + 1)}
-                    className="text-2xl font-bold text-teal-700 w-8"
+                    className="text-2xl font-bold text-teal-700 dark:text-teal-400 w-8"
                   >
                     +
                   </button>
                 </div>
               </div>
             </div>
-            <div className="p-4 border-t bg-gray-50 rounded-b-3xl">
+            <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-b-3xl">
               <button
                 onClick={addToCart}
                 className="w-full bg-teal-700 text-white py-4 rounded-xl font-black text-lg flex justify-between items-center px-6 shadow-lg active:scale-95 transition-transform"
@@ -305,26 +339,26 @@ export default function CustomerApp() {
           onClick={() => setShowCart(false)}
         >
           <div
-            className="bg-white w-full max-w-lg rounded-t-3xl max-h-[85vh] flex flex-col"
+            className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-t-3xl max-h-[85vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-5 border-b flex justify-between items-center">
-              <h2 className="text-xl font-black">سلة المشتريات</h2>
-              <button onClick={() => setShowCart(false)} className="text-2xl">
+            <div className="p-5 border-b dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-black text-gray-800 dark:text-white">سلة المشتريات</h2>
+              <button onClick={() => setShowCart(false)} className="text-2xl text-gray-700 dark:text-gray-200">
                 ✕
               </button>
             </div>
             <div className="p-5 overflow-y-auto flex-1 no-scrollbar">
               {cart.map((item, i) => (
-                <div key={i} className="flex gap-3 mb-4 pb-4 border-b">
+                <div key={i} className="flex gap-3 mb-4 pb-4 border-b dark:border-gray-700">
                   <img src={item.image} className="w-16 h-16 rounded-xl object-cover" />
                   <div className="flex-1">
-                    <h4 className="font-bold">{item.productName}</h4>
-                    <p className="text-xs text-gray-500">
+                    <h4 className="font-bold text-gray-800 dark:text-white">{item.productName}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {item.flavorName && `${item.flavorName} • `}
                       {item.variantName}
                     </p>
-                    <p className="text-sm font-bold text-teal-700 mt-1">
+                    <p className="text-sm font-bold text-teal-700 dark:text-teal-400 mt-1">
                       {item.quantity} × {item.unitPrice} = {item.unitPrice * item.quantity} SR
                     </p>
                   </div>
@@ -337,10 +371,10 @@ export default function CustomerApp() {
                 </div>
               ))}
             </div>
-            <div className="p-5 border-t bg-gray-50">
-              <div className="flex justify-between font-black text-lg mb-4">
+            <div className="p-5 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+              <div className="flex justify-between font-black text-lg mb-4 text-gray-800 dark:text-white">
                 <span>الإجمالي:</span>
-                <span className="text-teal-700">{cartTotal} SR</span>
+                <span className="text-teal-700 dark:text-teal-400">{cartTotal} SR</span>
               </div>
               <button
                 onClick={() => setShowCheckout(true)}
@@ -355,16 +389,16 @@ export default function CustomerApp() {
 
       {showCheckout && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center">
-          <div className="bg-white w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col">
-            <div className="p-5 border-b flex justify-between items-center">
-              <h2 className="text-xl font-black">إتمام الطلب</h2>
-              <button onClick={() => setShowCheckout(false)} className="text-2xl">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col">
+            <div className="p-5 border-b dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-black text-gray-800 dark:text-white">إتمام الطلب</h2>
+              <button onClick={() => setShowCheckout(false)} className="text-2xl text-gray-700 dark:text-gray-200">
                 ✕
               </button>
             </div>
             <div className="p-5 overflow-y-auto flex-1 no-scrollbar space-y-4">
               <div>
-                <label className="font-bold text-gray-700 text-sm block mb-2">
+                <label className="font-bold text-gray-700 dark:text-gray-200 text-sm block mb-2">
                   نوع الطلب:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -373,7 +407,7 @@ export default function CustomerApp() {
                     className={`p-3 rounded-xl border-2 font-bold ${
                       orderType === 'delivery'
                         ? 'bg-teal-700 text-white border-teal-700'
-                        : 'bg-white border-gray-200 text-gray-600'
+                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-200'
                     }`}
                   >
                     🚗 توصيل
@@ -383,7 +417,7 @@ export default function CustomerApp() {
                     className={`p-3 rounded-xl border-2 font-bold ${
                       orderType === 'pickup'
                         ? 'bg-teal-700 text-white border-teal-700'
-                        : 'bg-white border-gray-200 text-gray-600'
+                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-200'
                     }`}
                   >
                     🏪 استلام
@@ -392,18 +426,18 @@ export default function CustomerApp() {
               </div>
 
               <div>
-                <label className="font-bold text-gray-700 text-sm block mb-2">الاسم:</label>
+                <label className="font-bold text-gray-700 dark:text-gray-200 text-sm block mb-2">الاسم:</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="اسمك الكامل"
-                  className="w-full p-3 rounded-xl border-2 border-gray-200 focus:border-teal-600 outline-none"
+                  className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:border-teal-600 outline-none"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-gray-700 text-sm block mb-2">
+                <label className="font-bold text-gray-700 dark:text-gray-200 text-sm block mb-2">
                   رقم الجوال:
                 </label>
                 <input
@@ -412,28 +446,28 @@ export default function CustomerApp() {
                   onChange={(e) => handlePhoneChange(e.target.value)}
                   placeholder="05xxxxxxxx"
                   dir="ltr"
-                  className={`w-full p-3 rounded-xl border-2 outline-none ${
-                    phoneError ? 'border-red-400' : 'border-gray-200 focus:border-teal-600'
+                  className={`w-full p-3 rounded-xl border-2 outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-white ${
+                    phoneError ? 'border-red-400' : 'border-gray-200 dark:border-gray-600 focus:border-teal-600'
                   }`}
                 />
                 {phoneError && (
                   <p className="text-red-500 text-xs mt-1 font-bold">⚠️ {phoneError}</p>
                 )}
                 {!phoneError && phone.length > 0 && (
-                  <p className="text-green-600 text-xs mt-1 font-bold">✓ رقم صحيح</p>
+                  <p className="text-green-600 dark:text-green-400 text-xs mt-1 font-bold">✓ رقم صحيح</p>
                 )}
               </div>
 
               {orderType === 'delivery' && (
                 <div>
-                  <label className="font-bold text-gray-700 text-sm block mb-2">
+                  <label className="font-bold text-gray-700 dark:text-gray-200 text-sm block mb-2">
                     موقع التوصيل:
                   </label>
-                  <div className="bg-gradient-to-br from-blue-50 to-teal-50 border-2 border-blue-200 rounded-xl p-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-2xl">📍</span>
                       <div className="flex-1">
-                        <p className="text-xs text-gray-600 font-bold">
+                        <p className="text-xs text-gray-600 dark:text-gray-300 font-bold">
                           {selectedBranch?.name}
                         </p>
                         <p className="text-xs text-gray-400">
@@ -442,7 +476,7 @@ export default function CustomerApp() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">المسافة التقريبية:</span>
+                      <span className="text-gray-600 dark:text-gray-300">المسافة التقريبية:</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="range"
@@ -453,24 +487,56 @@ export default function CustomerApp() {
                           onChange={(e) => setDistanceKm(parseFloat(e.target.value))}
                           className="w-24"
                         />
-                        <b className="text-teal-700">{distanceKm} كم</b>
+                        <b className="text-teal-700 dark:text-teal-400">{distanceKm} كم</b>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-dashed border-yellow-300 dark:border-yellow-700 rounded-xl p-3">
+                <label className="font-bold text-gray-700 dark:text-gray-200 text-sm block mb-2">🎁 كود الخصم</label>
+                {!appliedCoupon ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="مثال: WELCOME10"
+                      className="flex-1 p-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white outline-none text-sm font-bold"
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading}
+                      className="bg-teal-700 text-white px-4 py-3 rounded-xl font-bold text-sm disabled:opacity-50"
+                    >
+                      {couponLoading ? '...' : 'تطبيق'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/30 p-3 rounded-xl">
+                    <div>
+                      <p className="font-bold text-green-700 dark:text-green-300 text-sm">✅ {couponCode}</p>
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        خصم {appliedCoupon.discountAmount} SR
+                      </p>
+                    </div>
+                    <button onClick={removeCoupon} className="text-red-500 text-sm font-bold">
+                      إلغاء
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div>
-                <label className="font-bold text-gray-700 text-sm block mb-2">
-                  طريقة الدفع:
-                </label>
+                <label className="font-bold text-gray-700 dark:text-gray-200 text-sm block mb-2">طريقة الدفع:</label>
                 <div className="space-y-2">
                   <button
                     onClick={() => setPayMethod('cash')}
                     className={`w-full p-3 rounded-xl border-2 font-bold text-right flex justify-between items-center ${
                       payMethod === 'cash'
-                        ? 'bg-teal-50 border-teal-600 text-teal-800'
-                        : 'bg-white border-gray-200 text-gray-600'
+                        ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-600 text-teal-800 dark:text-teal-300'
+                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-200'
                     }`}
                   >
                     <span>💵 نقداً عند الاستلام</span>
@@ -480,8 +546,8 @@ export default function CustomerApp() {
                     onClick={() => setPayMethod('card')}
                     className={`w-full p-3 rounded-xl border-2 font-bold text-right flex justify-between items-center ${
                       payMethod === 'card'
-                        ? 'bg-teal-50 border-teal-600 text-teal-800'
-                        : 'bg-white border-gray-200 text-gray-600'
+                        ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-600 text-teal-800 dark:text-teal-300'
+                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-200'
                     }`}
                   >
                     <span>💳 بطاقة (مدى / Apple Pay)</span>
@@ -490,7 +556,7 @@ export default function CustomerApp() {
                 </div>
               </div>
 
-              <div className="bg-gray-50 p-4 rounded-xl space-y-2 text-sm">
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl space-y-2 text-sm text-gray-800 dark:text-gray-200">
                 <div className="flex justify-between">
                   <span>المجموع الفرعي:</span>
                   <b>{cartTotal} SR</b>
@@ -501,13 +567,19 @@ export default function CustomerApp() {
                     <b>{deliveryFee} SR</b>
                   </div>
                 )}
-                <div className="flex justify-between text-lg font-black border-t pt-2 mt-2">
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600 dark:text-green-400">
+                    <span>الخصم:</span>
+                    <b>-{discountAmount} SR</b>
+                  </div>
+                )}
+                <div className="flex justify-between text-lg font-black border-t dark:border-gray-600 pt-2 mt-2">
                   <span>الإجمالي:</span>
-                  <span className="text-teal-700">{grandTotal} SR</span>
+                  <span className="text-teal-700 dark:text-teal-400">{grandTotal} SR</span>
                 </div>
               </div>
             </div>
-            <div className="p-4 border-t">
+            <div className="p-4 border-t dark:border-gray-700">
               <button
                 onClick={submitOrder}
                 disabled={submitting}
@@ -522,9 +594,9 @@ export default function CustomerApp() {
 
       {showTracking && trackingOrder && (
         <div className="fixed inset-0 z-[60] bg-black/70 flex items-end justify-center">
-          <div className="bg-white w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col animate-slide-up">
-            <div className="p-5 border-b flex justify-between items-center">
-              <h2 className="text-xl font-black">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col animate-slide-up">
+            <div className="p-5 border-b dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-black text-gray-800 dark:text-white">
                 تتبع الطلب #{trackingOrder.order_number}
               </h2>
               <button
@@ -532,23 +604,23 @@ export default function CustomerApp() {
                   setShowTracking(false);
                   setTrackingOrderId(null);
                 }}
-                className="text-2xl"
+                className="text-2xl text-gray-700 dark:text-gray-200"
               >
                 ✕
               </button>
             </div>
             <div className="p-5 overflow-y-auto flex-1 no-scrollbar">
               <div className="text-center mb-6">
-                <div className="w-20 h-20 mx-auto bg-teal-100 rounded-full flex items-center justify-center text-4xl mb-3">
+                <div className="w-20 h-20 mx-auto bg-teal-100 dark:bg-teal-900 rounded-full flex items-center justify-center text-4xl mb-3">
                   {statusSteps[currentStepIdx]?.icon}
                 </div>
-                <h3 className="text-xl font-black text-gray-800">
+                <h3 className="text-xl font-black text-gray-800 dark:text-white">
                   {statusSteps[currentStepIdx]?.label}
                 </h3>
               </div>
 
               <div className="relative mb-8">
-                <div className="absolute top-5 right-5 left-5 h-1 bg-gray-200"></div>
+                <div className="absolute top-5 right-5 left-5 h-1 bg-gray-200 dark:bg-gray-700"></div>
                 <div
                   className="absolute top-5 right-5 h-1 bg-teal-600 transition-all duration-500"
                   style={{
@@ -562,14 +634,14 @@ export default function CustomerApp() {
                         className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all ${
                           i <= currentStepIdx
                             ? 'bg-teal-600 text-white shadow-lg'
-                            : 'bg-gray-200 text-gray-400'
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
                         }`}
                       >
                         {i < currentStepIdx ? '✓' : step.icon}
                       </div>
                       <span
                         className={`text-xs mt-2 font-bold ${
-                          i <= currentStepIdx ? 'text-teal-700' : 'text-gray-400'
+                          i <= currentStepIdx ? 'text-teal-700 dark:text-teal-400' : 'text-gray-400'
                         }`}
                       >
                         {step.label}
@@ -579,12 +651,12 @@ export default function CustomerApp() {
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-2xl p-4 mb-4">
-                <h4 className="font-bold text-gray-700 mb-3">تفاصيل الطلب:</h4>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 mb-4">
+                <h4 className="font-bold text-gray-700 dark:text-gray-200 mb-3">تفاصيل الطلب:</h4>
                 {(trackingOrder.order_items || []).map((item, i) => (
                   <div
                     key={i}
-                    className="flex justify-between text-sm py-1.5 border-b border-gray-200 last:border-0"
+                    className="flex justify-between text-sm py-1.5 border-b border-gray-200 dark:border-gray-600 last:border-0 text-gray-800 dark:text-gray-200"
                   >
                     <span>
                       {item.product_name}{' '}
@@ -594,13 +666,19 @@ export default function CustomerApp() {
                     <b>{item.total_price} SR</b>
                   </div>
                 ))}
-                <div className="flex justify-between font-black text-lg pt-2 mt-2 border-t">
+                {trackingOrder.discount > 0 && (
+                  <div className="flex justify-between text-sm py-1.5 text-green-600 dark:text-green-400 border-t border-gray-200 dark:border-gray-600">
+                    <span>الخصم</span>
+                    <b>-{trackingOrder.discount} SR</b>
+                  </div>
+                )}
+                <div className="flex justify-between font-black text-lg pt-2 mt-2 border-t dark:border-gray-600 text-gray-800 dark:text-white">
                   <span>الإجمالي</span>
-                  <span className="text-teal-700">{trackingOrder.total} SR</span>
+                  <span className="text-teal-700 dark:text-teal-400">{trackingOrder.total} SR</span>
                 </div>
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-800">
+              <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-200">
                 ℹ️ الحالة تُحدَّث تلقائياً من الكاشير لحظة بلحظة.
               </div>
             </div>
@@ -609,4 +687,4 @@ export default function CustomerApp() {
       )}
     </div>
   );
-}
+          }

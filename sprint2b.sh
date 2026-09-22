@@ -1,3 +1,10 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
+
+# ============================================
+# src/hooks/useSupabaseData.js (نسخة محدثة)
+# ============================================
+cat > src/hooks/useSupabaseData.js << 'EOF'
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import {
@@ -145,3 +152,66 @@ export function useBranches() {
 
   return branches;
 }
+EOF
+
+# ============================================
+# src/hooks/useOrdersApi.js (نسخة محدثة)
+# ============================================
+cat > src/hooks/useOrdersApi.js << 'EOF'
+import { createOrder as svcCreateOrder, setOrderStatus } from '../services/supabase';
+import { setDriverAvailability } from '../services/supabase/drivers';
+import { toggleProductStock as svcToggleStock, updateVariantPrice as svcUpdatePrice } from '../services/supabase/products';
+
+// إعادة التصدير للتوافق مع الكود القديم
+export const createOrder = svcCreateOrder;
+export const updateOrderStatus = setOrderStatus;
+export const toggleDriverAvailability = setDriverAvailability;
+export const toggleProductStock = svcToggleStock;
+export const updateVariantPrice = svcUpdatePrice;
+EOF
+
+# ============================================
+# src/hooks/useCoupons.js (نسخة محدثة)
+# ============================================
+cat > src/hooks/useCoupons.js << 'EOF'
+import { validateCoupon as svcValidateCoupon } from '../services/supabase';
+
+// إعادة التصدير للتوافق
+export const validateCoupon = svcValidateCoupon;
+EOF
+
+# ============================================
+# src/hooks/useOnlineStatus.js (جديد)
+# ============================================
+cat > src/hooks/useOnlineStatus.js << 'EOF'
+import { useState, useEffect } from 'react';
+
+export function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return isOnline;
+}
+EOF
+
+echo "✅ Sprint 2B: Hooks updated to use services"
+echo ""
+echo "الملفات المحدثة:"
+ls -la src/hooks/useSupabaseData.js
+ls -la src/hooks/useOrdersApi.js
+ls -la src/hooks/useCoupons.js
+ls -la src/hooks/useOnlineStatus.js

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '../../features/auth/AuthProvider';
 import ProtectedRoute from '../../features/auth/ProtectedRoute';
 import Login from '../../features/auth/Login';
+import AuthenticatedHeader from '../layouts/AuthenticatedHeader';
 import CustomerApp from '../../components/CustomerApp';
 import BranchApp from '../../components/BranchApp';
 import AdminApp from '../../components/AdminApp';
@@ -20,6 +21,33 @@ function NotFound() {
   );
 }
 
+function CashierLayout() {
+  return (
+    <div dir="rtl" className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <AuthenticatedHeader title="شاشة الكاشير" icon="🖥️" />
+      <BranchApp />
+    </div>
+  );
+}
+
+function AdminLayout() {
+  return (
+    <div dir="rtl" className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <AuthenticatedHeader title="لوحة الإدارة" icon="📊" />
+      <AdminApp />
+    </div>
+  );
+}
+
+function DriverLayout() {
+  return (
+    <div dir="rtl" className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <AuthenticatedHeader title="شاشة المناديب" icon="🛵" />
+      <DriverApp />
+    </div>
+  );
+}
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -27,9 +55,9 @@ export default function AppRouter() {
         <Routes>
           <Route path="/" element={<CustomerApp />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/cashier" element={<ProtectedRoute path="/cashier"><BranchApp /></ProtectedRoute>} />
-          <Route path="/admin/*" element={<ProtectedRoute path="/admin"><AdminApp /></ProtectedRoute>} />
-          <Route path="/driver" element={<ProtectedRoute path="/driver"><DriverApp /></ProtectedRoute>} />
+          <Route path="/cashier" element={<ProtectedRoute path="/cashier"><CashierLayout /></ProtectedRoute>} />
+          <Route path="/admin/*" element={<ProtectedRoute path="/admin"><AdminLayout /></ProtectedRoute>} />
+          <Route path="/driver" element={<ProtectedRoute path="/driver"><DriverLayout /></ProtectedRoute>} />
           <Route path="/cashier/*" element={<Navigate to="/cashier" replace />} />
           <Route path="/driver/*" element={<Navigate to="/driver" replace />} />
           <Route path="*" element={<NotFound />} />

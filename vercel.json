@@ -1,4 +1,9 @@
 {
+  "build": {
+    "env": {
+      "NPM_CONFIG_IGNORE_SCRIPTS": "false"
+    }
+  },
   "rewrites": [
     { "source": "/((?!api/|.*\\..*).*)", "destination": "/index.html" }
   ]

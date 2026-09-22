@@ -1,4 +1,6 @@
-{
+"engines": {
+  "node": "20.x"
+},{
   "name": "dolma-factory",
   "private": true,
   "version": "1.0.0",

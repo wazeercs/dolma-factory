@@ -1,3 +1,10 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
+
+# ═══════════════════════════════════════════
+# إصلاح constants.js — إضافة كل الصادرات
+# ═══════════════════════════════════════════
+cat > src/lib/constants.js << 'EOF'
 // ═══════════════════════════════════════════
 // الأدوار
 // ═══════════════════════════════════════════
@@ -85,3 +92,66 @@ export const CONNECTION_STATUS = {
   TIMED_OUT: 'timed_out',
   CLOSED: 'closed',
 };
+EOF
+
+# ═══════════════════════════════════════════
+# إصلاح package.json — Node 24
+# ═══════════════════════════════════════════
+cat > package.json << 'EOF'
+{
+  "name": "dolma-factory",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "postinstall": "npm rebuild esbuild --silent || true"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1"
+  }
+}
+EOF
+
+# ═══════════════════════════════════════════
+# إصلاح vercel.json — إعدادات صريحة
+# ═══════════════════════════════════════════
+cat > vercel.json << 'EOF'
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/((?!api/|.*\\..*).*)", "destination": "/index.html" }
+  ]
+}
+EOF
+
+echo ""
+echo "✅ Constants + Package + Vercel config fixed"
+echo ""
+echo "═══ عدد الصادرات في constants.js ═══"
+grep "^export" src/lib/constants.js | wc -l
+
+echo ""
+echo "═══ تأكيد ORDER_STATUS_COLORS ═══"
+grep "ORDER_STATUS_COLORS" src/lib/constants.js
+
+echo ""
+echo "═══ تأكيد Node 24 ═══"
+grep "node" package.json

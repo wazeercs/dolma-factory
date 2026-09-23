@@ -75,7 +75,12 @@ export default function AdminApp() {
       {tab === 'dash' && <StatsCards stats={stats} />}
       {tab === 'reports' && <ReportsTab />}
       {tab === 'products' && (
-        <ProductsTab products={products} onToggleStock={handleToggleStock} onUpdatePrice={handleUpdatePrice} />
+        <ProductsTab
+          products={products}
+          onToggleStock={handleToggleStock}
+          onUpdatePrice={handleUpdatePrice}
+          onRefetch={refetchProducts}
+        />
       )}
       {tab === 'orders' && <OrdersTab orders={orders} />}
       {tab === 'branches' && <BranchesTab branches={branches} />}

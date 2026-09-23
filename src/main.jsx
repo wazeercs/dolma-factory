@@ -3,16 +3,19 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 import { ToastProvider } from './components/Toast.jsx';
+import ErrorBoundary from './app/ErrorBoundary.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ToastProvider>
-      <App />
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
 
-// تسجيل SW فقط في الإنتاج وبأمان
+// Service Worker — نظيف بدون اعتراض fetch
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker

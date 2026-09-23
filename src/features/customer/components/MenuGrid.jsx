@@ -1,5 +1,6 @@
 import React from 'react';
 import ProductCard from './ProductCard';
+import EmptyState from '../../../components/EmptyState';
 
 export default function MenuGrid({ products, onSelect, loading }) {
   if (loading) {
@@ -8,8 +9,14 @@ export default function MenuGrid({ products, onSelect, loading }) {
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="bg-gray-200 dark:bg-gray-700 rounded-2xl h-44 animate-pulse"
-          />
+            className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700"
+          >
+            <div className="w-full h-28 bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            <div className="p-3 space-y-2">
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-3 w-2/3 mx-auto bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -17,10 +24,11 @@ export default function MenuGrid({ products, onSelect, loading }) {
 
   if (products.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-400 dark:text-gray-500">
-        <p className="text-4xl mb-2">😔</p>
-        <p>لا توجد منتجات متوفرة حالياً</p>
-      </div>
+      <EmptyState
+        icon="🍽️"
+        title="لا توجد منتجات متاحة"
+        description="يبدو أن جميع المنتجات غير متوفرة حالياً. يرجى المحاولة لاحقاً أو التواصل مع الفرع."
+      />
     );
   }
 

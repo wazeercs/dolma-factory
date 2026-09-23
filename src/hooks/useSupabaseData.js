@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { withRetry, isRetryableError } from '../lib/retry';
 import {
   fetchProducts,
   fetchOrders,
@@ -8,23 +9,13 @@ import {
   trackOrder,
 } from '../services/supabase';
 
-/**
- * useRealtimeChannel — Hook موحد لإدارة اشتراكات Realtime بأمان
- * - يضمن cleanup تلقائي
- * - يمنع الاشتراكات المكررة
- * - يضيف حالة الاتصال
- */
 function useRealtimeChannel(channelName, configs, callback, deps = []) {
   const [status, setStatus] = useState('connecting');
   const channelRef = useRef(null);
 
   useEffect(() => {
     if (!channelName || !configs?.length) return;
-
-    // إزالة أي قناة سابقة
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
 
     let channel = supabase.channel(channelName);
     configs.forEach(({ event, schema, table, filter }) => {
@@ -35,13 +26,7 @@ function useRealtimeChannel(channelName, configs, callback, deps = []) {
       );
     });
 
-    channel.subscribe((s) => {
-      setStatus(s);
-      if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
-        console.warn(`[Realtime] ${channelName} → ${s}`);
-      }
-    });
-
+    channel.subscribe((s) => setStatus(s));
     channelRef.current = channel;
 
     return () => {
@@ -50,13 +35,11 @@ function useRealtimeChannel(channelName, configs, callback, deps = []) {
         channelRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return status;
 }
 
-// ═══ Products ═══
 export function useProducts(branchId = null) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +48,10 @@ export function useProducts(branchId = null) {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const data = await fetchProducts(branchId);
+      const data = await withRetry(() => fetchProducts(branchId), {
+        maxAttempts: 3,
+        shouldRetry: isRetryableError,
+      });
       setProducts(data);
     } catch (err) {
       setError(err.message || 'فشل تحميل المنتجات');
@@ -90,7 +76,6 @@ export function useProducts(branchId = null) {
   return { products, loading, error, refetch: load };
 }
 
-// ═══ Orders ═══
 export function useOrders(branchId = null, onlyActive = false) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +84,10 @@ export function useOrders(branchId = null, onlyActive = false) {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const data = await fetchOrders({ branchId, onlyActive });
+      const data = await withRetry(
+        () => fetchOrders({ branchId, onlyActive }),
+        { maxAttempts: 3, shouldRetry: isRetryableError }
+      );
       setOrders(data);
     } catch (err) {
       setError(err.message || 'فشل تحميل الطلبات');
@@ -123,7 +111,6 @@ export function useOrders(branchId = null, onlyActive = false) {
   return { orders, loading, error, refetch: load };
 }
 
-// ═══ Order Tracking (Customer) ═══
 export function useOrderTracking(orderNumber, phone) {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
@@ -133,7 +120,10 @@ export function useOrderTracking(orderNumber, phone) {
 
     const load = async () => {
       try {
-        const data = await trackOrder(orderNumber, phone);
+        const data = await withRetry(() => trackOrder(orderNumber, phone), {
+          maxAttempts: 2,
+          shouldRetry: isRetryableError,
+        });
         setOrder(data);
         setError(null);
       } catch (err) {
@@ -142,7 +132,6 @@ export function useOrderTracking(orderNumber, phone) {
     };
 
     load();
-    // Polling كل 5 ثوان — لا Realtime لأن الزبون not authenticated
     const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
   }, [orderNumber, phone]);
@@ -150,7 +139,6 @@ export function useOrderTracking(orderNumber, phone) {
   return order;
 }
 
-// ═══ Drivers ═══
 export function useDrivers(branchId = null) {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -159,7 +147,10 @@ export function useDrivers(branchId = null) {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const data = await fetchDrivers(branchId);
+      const data = await withRetry(() => fetchDrivers(branchId), {
+        maxAttempts: 3,
+        shouldRetry: isRetryableError,
+      });
       setDrivers(data);
     } catch (err) {
       setError(err.message || 'فشل تحميل المناديب');
@@ -172,9 +163,7 @@ export function useDrivers(branchId = null) {
 
   useRealtimeChannel(
     `drivers-${branchId || 'all'}`,
-    [
-      { event: '*', table: 'drivers', filter: branchId ? `branch_id=eq.${branchId}` : undefined },
-    ],
+    [{ event: '*', table: 'drivers', filter: branchId ? `branch_id=eq.${branchId}` : undefined }],
     load,
     [branchId]
   );
@@ -182,14 +171,16 @@ export function useDrivers(branchId = null) {
   return { drivers, loading, error, refetch: load };
 }
 
-// ═══ Branches ═══
 export function useBranches() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    fetchActiveBranches()
+    withRetry(() => fetchActiveBranches(), {
+      maxAttempts: 3,
+      shouldRetry: isRetryableError,
+    })
       .then((data) => mounted && setBranches(data))
       .catch((err) => console.error('branches:', err))
       .finally(() => mounted && setLoading(false));

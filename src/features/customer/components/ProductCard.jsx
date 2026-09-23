@@ -1,26 +1,27 @@
 import React from 'react';
+import OptimizedImage from '../../../components/OptimizedImage';
 
-export default function ProductCard({ product, onClick }) {
+export default function ProductCard({ product, onClick, priority = false }) {
   return (
     <div
       onClick={() => onClick(product)}
       className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-gray-700 relative"
     >
-      {/* Badges */}
-      <div className="absolute top-2 right-2 flex flex-col gap-1 z-10">
-        {product.is_bundle && (
+      {product.is_bundle && (
+        <div className="absolute top-2 right-2 z-10">
           <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-md">
             👨‍👩‍👧‍👦 عائلي
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
-      <img
+      <OptimizedImage
         src={product.image_url}
         alt={product.name}
-        className="w-full h-28 object-cover"
-        loading="lazy"
+        aspectRatio="wide"
+        priority={priority}
       />
+
       <div className="p-3 text-center">
         <h3 className="font-bold text-gray-800 dark:text-white text-sm line-clamp-2">
           {product.name}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import {
   fetchProducts,
@@ -8,6 +8,55 @@ import {
   trackOrder,
 } from '../services/supabase';
 
+/**
+ * useRealtimeChannel — Hook موحد لإدارة اشتراكات Realtime بأمان
+ * - يضمن cleanup تلقائي
+ * - يمنع الاشتراكات المكررة
+ * - يضيف حالة الاتصال
+ */
+function useRealtimeChannel(channelName, configs, callback, deps = []) {
+  const [status, setStatus] = useState('connecting');
+  const channelRef = useRef(null);
+
+  useEffect(() => {
+    if (!channelName || !configs?.length) return;
+
+    // إزالة أي قناة سابقة
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    let channel = supabase.channel(channelName);
+    configs.forEach(({ event, schema, table, filter }) => {
+      channel = channel.on(
+        'postgres_changes',
+        { event, schema: schema || 'public', table, ...(filter ? { filter } : {}) },
+        (payload) => callback(payload)
+      );
+    });
+
+    channel.subscribe((s) => {
+      setStatus(s);
+      if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
+        console.warn(`[Realtime] ${channelName} → ${s}`);
+      }
+    });
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  return status;
+}
+
+// ═══ Products ═══
 export function useProducts(branchId = null) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,19 +74,23 @@ export function useProducts(branchId = null) {
     }
   }, [branchId]);
 
-  useEffect(() => {
-    load();
-    const ch = supabase.channel('products-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variants' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_flavors' }, load)
-      .subscribe();
-    return () => supabase.removeChannel(ch);
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
+
+  useRealtimeChannel(
+    `products-${branchId || 'all'}`,
+    [
+      { event: '*', table: 'products', filter: branchId ? `branch_id=eq.${branchId}` : undefined },
+      { event: '*', table: 'product_variants' },
+      { event: '*', table: 'product_flavors' },
+    ],
+    load,
+    [branchId]
+  );
 
   return { products, loading, error, refetch: load };
 }
 
+// ═══ Orders ═══
 export function useOrders(branchId = null, onlyActive = false) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,18 +108,22 @@ export function useOrders(branchId = null, onlyActive = false) {
     }
   }, [branchId, onlyActive]);
 
-  useEffect(() => {
-    load();
-    const ch = supabase.channel(`orders-changes-${branchId || 'all'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, load)
-      .subscribe();
-    return () => supabase.removeChannel(ch);
-  }, [load, branchId]);
+  useEffect(() => { load(); }, [load]);
+
+  useRealtimeChannel(
+    `orders-${branchId || 'all'}-${onlyActive ? 'active' : 'all'}`,
+    [
+      { event: '*', table: 'orders', filter: branchId ? `branch_id=eq.${branchId}` : undefined },
+      { event: '*', table: 'order_items' },
+    ],
+    load,
+    [branchId, onlyActive]
+  );
 
   return { orders, loading, error, refetch: load };
 }
 
+// ═══ Order Tracking (Customer) ═══
 export function useOrderTracking(orderNumber, phone) {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
@@ -83,8 +140,9 @@ export function useOrderTracking(orderNumber, phone) {
         setError(err.message);
       }
     };
-    load();
 
+    load();
+    // Polling كل 5 ثوان — لا Realtime لأن الزبون not authenticated
     const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
   }, [orderNumber, phone]);
@@ -92,6 +150,7 @@ export function useOrderTracking(orderNumber, phone) {
   return order;
 }
 
+// ═══ Drivers ═══
 export function useDrivers(branchId = null) {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,17 +168,21 @@ export function useDrivers(branchId = null) {
     }
   }, [branchId]);
 
-  useEffect(() => {
-    load();
-    const ch = supabase.channel('drivers-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, load)
-      .subscribe();
-    return () => supabase.removeChannel(ch);
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
+
+  useRealtimeChannel(
+    `drivers-${branchId || 'all'}`,
+    [
+      { event: '*', table: 'drivers', filter: branchId ? `branch_id=eq.${branchId}` : undefined },
+    ],
+    load,
+    [branchId]
+  );
 
   return { drivers, loading, error, refetch: load };
 }
 
+// ═══ Branches ═══
 export function useBranches() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);

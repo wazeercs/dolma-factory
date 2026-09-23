@@ -13,6 +13,7 @@ import TrackingSheet from './components/TrackingSheet';
 import RamadanBanner from './components/RamadanBanner';
 import SearchBar from './components/SearchBar';
 import CategoryFilter from './components/CategoryFilter';
+import BottomNav from './components/BottomNav';
 import LoyaltyBadge from './components/LoyaltyBadge';
 
 export default function CustomerApp() {
@@ -46,6 +47,7 @@ export default function CustomerApp() {
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
+  const [activeNav, setActiveNav] = useState('home');
 
   const trackingOrder = useOrderTracking(
     trackingInfo?.number,

@@ -85,3 +85,30 @@ textarea:focus-visible {
 
 /* ═══ Numbers — عرض صحيح للأرقام اللاتينية في السياق العربي ═══ */
 .num-ltr { direction: ltr; display: inline-block; unicode-bidi: embed; }
+
+/* ═══ Safe Area (للـ Bottom Nav في iPhone) ═══ */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+}
+
+/* ═══ Line Clamp ═══ */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ═══ منع Selection عند Swipe ═══ */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

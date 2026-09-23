@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useProducts, useOrders, useBranches, useDrivers } from '../../hooks/useSupabaseData';
+import { useProducts, useOrders, useBranches } from '../../hooks/useSupabaseData';
 import { toggleProductStock, updateVariantPrice } from '../../hooks/useOrdersApi';
 import { useToast } from '../../components/Toast';
 import StatsCards from './components/StatsCards';
@@ -10,6 +10,7 @@ import DriversTab from './components/DriversTab';
 import HoursTab from './components/HoursTab';
 import ZonesTab from './components/ZonesTab';
 import UsersTab from './components/UsersTab';
+import ReportsTab from './components/ReportsTab';
 
 export default function AdminApp() {
   const toast = useToast();
@@ -23,15 +24,15 @@ export default function AdminApp() {
       await toggleProductStock(id, !current);
       await refetchProducts();
       toast.success(!current ? 'تم تفعيل المنتج' : 'تم إيقاف المنتج');
-    } catch { toast.error('فشل تحديث حالة المنتج'); }
+    } catch { toast.error('فشل'); }
   };
 
   const handleUpdatePrice = async (variantId, newPrice) => {
     try {
       await updateVariantPrice(variantId, parseFloat(newPrice));
       await refetchProducts();
-      toast.success('تم تحديث السعر');
-    } catch { toast.error('فشل تحديث السعر'); }
+      toast.success('تم التحديث');
+    } catch { toast.error('فشل'); }
   };
 
   const stats = useMemo(() => {
@@ -45,6 +46,7 @@ export default function AdminApp() {
 
   const tabs = [
     ['dash', '📊 الإحصائيات'],
+    ['reports', '📈 التقارير'],
     ['products', '🍽️ المنتجات'],
     ['orders', '📦 الطلبات'],
     ['branches', '🏬 الفروع'],
@@ -71,12 +73,9 @@ export default function AdminApp() {
       </div>
 
       {tab === 'dash' && <StatsCards stats={stats} />}
+      {tab === 'reports' && <ReportsTab />}
       {tab === 'products' && (
-        <ProductsTab
-          products={products}
-          onToggleStock={handleToggleStock}
-          onUpdatePrice={handleUpdatePrice}
-        />
+        <ProductsTab products={products} onToggleStock={handleToggleStock} onUpdatePrice={handleUpdatePrice} />
       )}
       {tab === 'orders' && <OrdersTab orders={orders} />}
       {tab === 'branches' && <BranchesTab branches={branches} />}

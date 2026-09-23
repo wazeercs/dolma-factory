@@ -11,6 +11,7 @@ import HoursTab from './components/HoursTab';
 import ZonesTab from './components/ZonesTab';
 import UsersTab from './components/UsersTab';
 import ReportsTab from './components/ReportsTab';
+import LoyaltyTab from './components/LoyaltyTab';
 
 export default function AdminApp() {
   const toast = useToast();
@@ -54,6 +55,7 @@ export default function AdminApp() {
     ['hours', '🕐 الساعات'],
     ['zones', '📍 التوصيل'],
     ['users', '👥 المستخدمون'],
+    ['loyalty', '🎁 الولاء'],
   ];
 
   return (
@@ -88,6 +90,7 @@ export default function AdminApp() {
       {tab === 'hours' && <HoursTab />}
       {tab === 'zones' && <ZonesTab />}
       {tab === 'users' && <UsersTab />}
+      {tab === 'loyalty' && <LoyaltyTab />}
     </div>
   );
 }

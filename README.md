@@ -1,17 +1,16 @@
 # 🌿 دولمه فاكتوري — نظام الطلبات والتوصيل
 
-نظام ويب متكامل (PWA) لإدارة الطلبات والتوصيل لمطعم دولمه فاكتوري.
+نظام ويب متكامل (PWA) لإدارة طلبات وتوصيل مطعم دولمه فاكتوري.
 
-## 🔗 الروابط
+## 🔗 روابط الإنتاج
 
 | الخدمة | الرابط |
 |--------|--------|
 | 🌐 الموقع | https://dolma-factory-3fo2.vercel.app |
-| 📄 الوثيقة التجارية | https://dolma-factory-3fo2.vercel.app/proposal.html |
 | 💾 GitHub | https://github.com/wazeercs/dolma-factory |
-| 🗄️ Supabase | https://supabase.com/dashboard/project/rwxdrkvrpnlzujbbatlx |
+| 🗄️ Supabase | supabase.com/dashboard/project/rwxdrkvrpnlzujbbatlx |
 
-## 👥 حسابات النظام
+## 👥 الحسابات
 
 | الدور | Email | Password |
 |-------|-------|----------|
@@ -21,19 +20,67 @@
 
 ## 🎯 الواجهات
 
-- `/` — واجهة الزبون (عامة)
+- `/` — واجهة الزبون (public PWA)
 - `/login` — تسجيل دخول
-- `/cashier` — شاشة الكاشير (يحتاج cashier أو أعلى)
-- `/admin` — لوحة الإدارة (يحتاج admin أو أعلى)
-- `/driver` — شاشة المناديب (يحتاج driver)
+- `/cashier` — شاشة الكاشير (cashier+)
+- `/admin` — لوحة الإدارة (admin+)
+- `/driver` — شاشة المناديب (driver)
 
-## 🛠️ الحزمة التقنية
+## 🛠️ التقنيات
 
-- React 18.3.1 + Vite 5.3.1 + Tailwind CSS 3.4.4
-- Supabase (PostgreSQL + PostGIS + Realtime + Auth)
-- Vercel (نشر تلقائي من GitHub)
+- **Frontend**: React 18 + Vite + Tailwind CSS + React Router v6
+- **Backend**: Supabase (PostgreSQL + PostGIS + Realtime + Auth + Storage)
+- **Hosting**: Vercel
+- **PWA**: Service Worker (نظيف، لا يعترض fetch)
 
-## 🚀 التشغيل المحلي
+## 📦 الميزات
+
+### 🛒 الزبون
+- تصفح المنيو + نكهات + أحجام
+- بحث + تصفية بالتصنيف
+- سلة + كوبونات
+- نقاط ولاء (1 نقطة / 10 ريال)
+- تتبع الطلب (7 مراحل)
+- WhatsApp share
+- PWA قابل للتثبيت
+
+### 🖥️ الكاشير
+- استقبال فوري (Realtime)
+- تنبيه صوتي مستمر
+- Swipe يمين للتأكيد
+- طباعة فواتير
+- مقفل على فرعه
+
+### 🛵 المندوب
+- Auth حقيقي (user_id)
+- يرى طلباته فقط
+- Google Maps + اتصال مباشر
+
+### 📊 الإدارة (10 تبويبات)
+- إحصائيات + تقارير (هجري/ميلادي)
+- CRUD منتجات + رفع صور
+- الطلبات + الفروع + المناديب
+- ساعات عمل + مناطق توصيل
+- عملاء الولاء + المستخدمين
+
+## 🔐 الأمان
+
+- RLS على كل الجداول
+- Rate Limiting (5 طلبات/10 دقائق لكل رقم)
+- Idempotency (منع التكرار)
+- Audit Log شامل
+- Coupon Atomic (FOR UPDATE)
+- Business Hours check
+- PostGIS للتحقق من نطاق التوصيل
+
+## ⚡ الأداء
+
+- **PageSpeed**: 88 (Mobile) / 98 (Desktop)
+- **Bundle**: 6 chunks (react-vendor, supabase, router, ...)
+- **Lazy Loading**: كل واجهة تُحمّل عند الحاجة
+- **Cache Headers**: assets + icons
+
+## 📝 التطوير
 
 ```bash
 npm install

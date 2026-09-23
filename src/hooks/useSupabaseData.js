@@ -3,9 +3,9 @@ import { supabase } from '../lib/supabaseClient';
 import {
   fetchProducts,
   fetchOrders,
-  fetchOrderById,
   fetchDrivers,
   fetchActiveBranches,
+  trackOrder,
 } from '../services/supabase';
 
 export function useProducts(branchId = null) {
@@ -27,8 +27,7 @@ export function useProducts(branchId = null) {
 
   useEffect(() => {
     load();
-    const ch = supabase
-      .channel('products-changes')
+    const ch = supabase.channel('products-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variants' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_flavors' }, load)
@@ -58,8 +57,7 @@ export function useOrders(branchId = null, onlyActive = false) {
 
   useEffect(() => {
     load();
-    const ch = supabase
-      .channel(`orders-changes-${branchId || 'all'}`)
+    const ch = supabase.channel(`orders-changes-${branchId || 'all'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, load)
       .subscribe();
@@ -69,34 +67,27 @@ export function useOrders(branchId = null, onlyActive = false) {
   return { orders, loading, error, refetch: load };
 }
 
-export function useOrderTracking(orderId) {
+export function useOrderTracking(orderNumber, phone) {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderNumber || !phone) return;
 
     const load = async () => {
       try {
-        const data = await fetchOrderById(orderId);
+        const data = await trackOrder(orderNumber, phone);
         setOrder(data);
+        setError(null);
       } catch (err) {
-        setError(err.message || 'فشل تحميل الطلب');
+        setError(err.message);
       }
     };
     load();
 
-    const ch = supabase
-      .channel(`order-${orderId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
-        (payload) => setOrder((prev) => ({ ...prev, ...payload.new }))
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(ch);
-  }, [orderId]);
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, [orderNumber, phone]);
 
   return order;
 }
@@ -120,8 +111,7 @@ export function useDrivers(branchId = null) {
 
   useEffect(() => {
     load();
-    const ch = supabase
-      .channel('drivers-changes')
+    const ch = supabase.channel('drivers-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, load)
       .subscribe();
     return () => supabase.removeChannel(ch);

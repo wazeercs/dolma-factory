@@ -30,12 +30,20 @@ export default function CustomerApp() {
   const [distanceKm, setDistanceKm] = useState(3.5);
   const [phoneError, setPhoneError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [trackingOrderId, setTrackingOrderId] = useState(null);
+  const [trackingInfo, setTrackingInfo] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dolma_last_order');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
 
-  const trackingOrder = useOrderTracking(trackingOrderId);
+  const trackingOrder = useOrderTracking(
+    trackingInfo?.number,
+    trackingInfo?.phone
+  );
 
   useEffect(() => {
     if (name) localStorage.setItem('dolma_name', name);
@@ -49,18 +57,17 @@ export default function CustomerApp() {
   const handleAddToCart = (product, flavor, variant, qty) => {
     if (!variant) return toast.warning('الرجاء اختيار الحجم');
     if (product.flavors?.length > 0 && !flavor) return toast.warning('الرجاء اختيار النكهة');
-    setCart([
-      ...cart,
-      {
-        productId: product.id,
-        productName: product.name,
-        flavorName: flavor?.name || null,
-        variantName: variant.name,
-        unitPrice: variant.price + (flavor?.extra_price || 0),
-        quantity: qty,
-        image: product.image_url,
-      },
-    ]);
+    setCart([...cart, {
+      productId: product.id,
+      variantId: variant.id,
+      flavorId: flavor?.id || null,
+      productName: product.name,
+      flavorName: flavor?.name || null,
+      variantName: variant.name,
+      unitPrice: variant.price + (flavor?.extra_price || 0),
+      quantity: qty,
+      image: product.image_url,
+    }]);
     setSel(null);
     toast.success('تمت الإضافة إلى السلة 🛒');
   };
@@ -108,33 +115,28 @@ export default function CustomerApp() {
 
     const cartCheck = validateCart(cart);
     if (!cartCheck.valid) return toast.error(cartCheck.errors[0]);
-
     if (!isOnline) return toast.error('لا يوجد اتصال بالإنترنت');
 
     setSubmitting(true);
     try {
       const idempotencyKey = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const order = await createOrder(
-        {
-          branchId: selectedBranch.id,
-          customerName: name.trim(),
-          customerPhone: phone.trim(),
-          orderType,
-          deliveryLocation: orderType === 'delivery' ? { lat: 24.7136, lng: 46.6753 } : null,
-          deliveryAddress: orderType === 'delivery' ? 'الرياض' : null,
-          distanceKm: orderType === 'delivery' ? distanceKm : 0,
-          subtotal: cartTotal,
-          deliveryFee,
-          discount: discountAmount,
-          total: grandTotal,
-          paymentMethod: payMethod === 'cash' ? 'cash' : 'card',
-          idempotencyKey,
-          couponId: appliedCoupon?.couponId || null,
-          couponCode: appliedCoupon ? couponCode : null,
-        },
-        cart
-      );
-      setTrackingOrderId(order.id);
+      const order = await createOrder({
+        branchId: selectedBranch.id,
+        customerName: name.trim(),
+        customerPhone: phone.trim(),
+        orderType,
+        deliveryLocation: orderType === 'delivery' ? { lat: 24.7136, lng: 46.6753 } : null,
+        deliveryAddress: orderType === 'delivery' ? 'الرياض' : null,
+        distanceKm: orderType === 'delivery' ? distanceKm : 0,
+        paymentMethod: payMethod === 'cash' ? 'cash' : 'card',
+        idempotencyKey,
+        couponCode: appliedCoupon ? couponCode : null,
+      }, cart);
+
+      const info = { number: order.order_number, phone: phone.trim() };
+      setTrackingInfo(info);
+      localStorage.setItem('dolma_last_order', JSON.stringify(info));
+
       setShowCheckout(false);
       setShowTracking(true);
       setCart([]);
@@ -143,7 +145,7 @@ export default function CustomerApp() {
       toast.success('تم إرسال طلبك بنجاح! 🎉');
     } catch (err) {
       console.error(err);
-      toast.error('حدث خطأ أثناء إرسال الطلب');
+      toast.error(err.message || 'حدث خطأ أثناء إرسال الطلب');
     } finally {
       setSubmitting(false);
     }
@@ -151,14 +153,12 @@ export default function CustomerApp() {
 
   return (
     <div className="pb-28 px-4 max-w-lg mx-auto">
-      {/* Online Status Banner */}
       {!isOnline && (
         <div className="bg-red-500 text-white p-2 rounded-lg text-center text-xs font-bold mb-3 mt-3">
           ⚠️ لا يوجد اتصال بالإنترنت — بعض الميزات معطلة
         </div>
       )}
 
-      {/* Header */}
       <div className="text-center py-6">
         <div className="w-20 h-20 mx-auto mb-3 bg-teal-700 rounded-full flex items-center justify-center text-white text-3xl">
           🌿
@@ -167,7 +167,16 @@ export default function CustomerApp() {
         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">أشهى المأكولات الشرقية الطازجة</p>
       </div>
 
-      {/* Branch Selector */}
+      {trackingInfo && !showTracking && (
+        <button
+          onClick={() => setShowTracking(true)}
+          className="w-full mb-4 bg-teal-700 text-white p-4 rounded-2xl font-bold flex justify-between items-center shadow-lg"
+        >
+          <span>📦 تتبع طلبك #{trackingInfo.number}</span>
+          <span className="text-sm bg-white/20 px-3 py-1 rounded-full">عرض</span>
+        </button>
+      )}
+
       {selectedBranch && (
         <div className="mb-4 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-200 dark:border-teal-800 rounded-2xl p-3 flex items-center gap-3">
           <span className="text-2xl">🏬</span>
@@ -190,17 +199,14 @@ export default function CustomerApp() {
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-xl p-3 mb-4 text-sm text-red-700 dark:text-red-300 font-bold">
           ⚠️ {error}
         </div>
       )}
 
-      {/* Menu */}
       <MenuGrid products={products} onSelect={setSel} loading={loading} />
 
-      {/* Floating Cart Button */}
       {cart.length > 0 && (
         <div
           onClick={() => setShowCart(true)}
@@ -211,7 +217,6 @@ export default function CustomerApp() {
         </div>
       )}
 
-      {/* Modals */}
       <ProductModal product={sel} onClose={() => setSel(null)} onAdd={handleAddToCart} />
 
       {showCart && !showCheckout && (
@@ -257,10 +262,7 @@ export default function CustomerApp() {
       {showTracking && trackingOrder && (
         <TrackingSheet
           order={trackingOrder}
-          onClose={() => {
-            setShowTracking(false);
-            setTrackingOrderId(null);
-          }}
+          onClose={() => setShowTracking(false)}
         />
       )}
     </div>

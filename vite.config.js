@@ -7,13 +7,18 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // فصل Supabase SDK (كبير الحجم)
-          'supabase': ['@supabase/supabase-js'],
-          // فصل React Router
-          'router': ['react-router-dom'],
-          // فصل React Core
-          'react-vendor': ['react', 'react-dom'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            // Supabase SDK
+            if (id.includes('@supabase')) return 'supabase';
+            // React Router
+            if (id.includes('react-router') || id.includes('@remix-run')) return 'router';
+            // React Core
+            if (id.includes('react-dom')) return 'react-vendor';
+            if (id.includes('/react/') || id.endsWith('react/index.js')) return 'react-vendor';
+            // بقية المكتبات
+            return 'vendor';
+          }
         },
       },
     },

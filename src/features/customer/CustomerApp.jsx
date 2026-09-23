@@ -11,6 +11,8 @@ import CartSheet from './components/CartSheet';
 import CheckoutSheet from './components/CheckoutSheet';
 import TrackingSheet from './components/TrackingSheet';
 import RamadanBanner from './components/RamadanBanner';
+import SearchBar from './components/SearchBar';
+import CategoryFilter from './components/CategoryFilter';
 import LoyaltyBadge from './components/LoyaltyBadge';
 
 export default function CustomerApp() {
@@ -42,6 +44,8 @@ export default function CustomerApp() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState(null);
 
   const trackingOrder = useOrderTracking(
     trackingInfo?.number,

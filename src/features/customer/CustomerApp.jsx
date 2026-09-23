@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useProducts, useBranches, useOrderTracking } from '../../hooks/useSupabaseData';
 import { createOrder } from '../../hooks/useOrdersApi';
 import { validateCoupon } from '../../hooks/useCoupons';
@@ -38,6 +38,7 @@ export default function CustomerApp() {
   const [locationError, setLocationError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const idempotencyKeyRef = useRef(null);
   const [trackingInfo, setTrackingInfo] = useState(() => {
     try {
       const saved = localStorage.getItem('dolma_last_order');
@@ -167,7 +168,11 @@ export default function CustomerApp() {
 
     setSubmitting(true);
     try {
-      const idempotencyKey = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+
+      const idempotencyKey = idempotencyKeyRef.current;
       const order = await createOrder({
         branchId: selectedBranch.id,
         customerName: name.trim(),
@@ -181,6 +186,8 @@ export default function CustomerApp() {
       }, cart);
 
       const info = { number: order.order_number, phone: phone.trim() };
+      idempotencyKeyRef.current = null;
+
       setTrackingInfo(info);
       localStorage.setItem('dolma_last_order', JSON.stringify(info));
 

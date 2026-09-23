@@ -32,7 +32,10 @@ export default function CustomerApp() {
   const [phone, setPhone] = useState(() => localStorage.getItem('dolma_phone') || '');
   const [payMethod, setPayMethod] = useState('cash');
   const [orderType, setOrderType] = useState('delivery');
-  const [distanceKm, setDistanceKm] = useState(3.5);
+  const [deliveryLocation, setDeliveryLocation] = useState(null);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [trackingInfo, setTrackingInfo] = useState(() => {
@@ -82,14 +85,42 @@ export default function CustomerApp() {
   };
 
   const cartTotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
-  const deliveryFee = orderType === 'delivery' ? Math.round(distanceKm * 3) : 0;
   const discountAmount = appliedCoupon?.discountAmount || 0;
-  const grandTotal = Math.max(0, cartTotal + deliveryFee - discountAmount);
+  const grandTotal = Math.max(0, cartTotal - discountAmount);
 
   const handlePhoneChange = (v) => {
     setPhone(v);
     if (v.length > 0 && !validateSaudiPhone(v)) setPhoneError('رقم غير صحيح (مثال: 0501234567)');
     else setPhoneError('');
+  };
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      setLocationError('المتصفح لا يدعم تحديد الموقع');
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError('');
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setDeliveryLocation({
+          lat: Number(position.coords.latitude.toFixed(6)),
+          lng: Number(position.coords.longitude.toFixed(6)),
+        });
+        setLocationLoading(false);
+      },
+      () => {
+        setLocationLoading(false);
+        setLocationError('تعذر تحديد موقعك. فعّل إذن الموقع ثم حاول مرة أخرى.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000,
+      }
+    );
   };
 
   const handleApplyCoupon = async () => {
@@ -122,6 +153,14 @@ export default function CustomerApp() {
     if (!validateSaudiPhone(phone)) return toast.warning('رقم الجوال غير صحيح');
     if (!selectedBranch) return toast.warning('لا يوجد فرع متاح');
 
+    if (orderType === 'delivery' && !deliveryLocation) {
+      return toast.warning('حدد موقع التوصيل أولاً');
+    }
+
+    if (orderType === 'delivery' && !deliveryAddress.trim()) {
+      return toast.warning('اكتب وصف عنوان التوصيل');
+    }
+
     const cartCheck = validateCart(cart);
     if (!cartCheck.valid) return toast.error(cartCheck.errors[0]);
     if (!isOnline) return toast.error('لا يوجد اتصال بالإنترنت');
@@ -134,9 +173,8 @@ export default function CustomerApp() {
         customerName: name.trim(),
         customerPhone: phone.trim(),
         orderType,
-        deliveryLocation: orderType === 'delivery' ? { lat: 24.7136, lng: 46.6753 } : null,
-        deliveryAddress: orderType === 'delivery' ? 'الرياض' : null,
-        distanceKm: orderType === 'delivery' ? distanceKm : 0,
+        deliveryLocation: orderType === 'delivery' ? deliveryLocation : null,
+        deliveryAddress: orderType === 'delivery' ? deliveryAddress.trim() : null,
         paymentMethod: payMethod === 'cash' ? 'cash' : 'card',
         idempotencyKey,
         couponCode: appliedCoupon ? couponCode : null,
@@ -241,7 +279,6 @@ export default function CustomerApp() {
       {showCheckout && (
         <CheckoutSheet
           cartTotal={cartTotal}
-          deliveryFee={deliveryFee}
           discountAmount={discountAmount}
           grandTotal={grandTotal}
           name={name}
@@ -251,8 +288,12 @@ export default function CustomerApp() {
           onPhoneChange={handlePhoneChange}
           orderType={orderType}
           onOrderTypeChange={setOrderType}
-          distanceKm={distanceKm}
-          onDistanceChange={setDistanceKm}
+          deliveryLocation={deliveryLocation}
+          deliveryAddress={deliveryAddress}
+          onDeliveryAddressChange={setDeliveryAddress}
+          locationLoading={locationLoading}
+          locationError={locationError}
+          onLocateMe={handleLocateMe}
           payMethod={payMethod}
           onPayChange={setPayMethod}
           couponCode={couponCode}

@@ -10,13 +10,9 @@
 | 💾 GitHub | https://github.com/wazeercs/dolma-factory |
 | 🗄️ Supabase | supabase.com/dashboard/project/rwxdrkvrpnlzujbbatlx |
 
-## 👥 الحسابات
+## 🔐 الحسابات والإدارة
 
-| الدور | Email | Password |
-|-------|-------|----------|
-| 👑 الإدارة | admin@dolma.com | Admin@2026 |
-| 🖥️ الكاشير | cashier@dolma.com | Cashier@2026 |
-| 🛵 المندوب | driver@dolma.com | Driver@2026 |
+بيانات الدخول لا تُحفظ داخل المستودع. تتم إدارة الحسابات وكلمات المرور بشكل آمن عبر Supabase Authentication.
 
 ## 🎯 الواجهات
 

@@ -112,14 +112,32 @@ export default function CustomerApp() {
           lng: Number(position.coords.longitude.toFixed(6)),
         });
         setLocationLoading(false);
+        setLocationError('');
       },
-      () => {
+      (error) => {
         setLocationLoading(false);
-        setLocationError('تعذر تحديد موقعك. فعّل إذن الموقع ثم حاول مرة أخرى.');
+
+        if (error.code === 1) {
+          setLocationError(
+            'تم رفض إذن الموقع. فعّل صلاحية الموقع من إعدادات المتصفح ثم اضغط «تحديد موقعي الحالي» مرة أخرى.'
+          );
+        } else if (error.code === 2) {
+          setLocationError(
+            'تعذر الحصول على موقعك. تأكد من تشغيل خدمة الموقع في الهاتف ثم حاول مرة أخرى.'
+          );
+        } else if (error.code === 3) {
+          setLocationError(
+            'انتهت مهلة تحديد الموقع. تأكد من تشغيل الموقع ثم حاول مرة أخرى.'
+          );
+        } else {
+          setLocationError(
+            'تعذر تحديد موقعك. فعّل إذن الموقع ثم حاول مرة أخرى.'
+          );
+        }
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 300000,
       }
     );

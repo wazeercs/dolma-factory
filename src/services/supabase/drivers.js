@@ -10,9 +10,10 @@ export async function fetchDrivers(branchId = null) {
 }
 
 export async function setDriverAvailability(driverId, isAvailable) {
-  const { error } = await supabase
-    .from('drivers')
-    .update({ is_available: isAvailable })
-    .eq('id', driverId);
+  const { error } = await supabase.rpc('set_driver_availability', {
+    p_driver_id: driverId,
+    p_is_available: isAvailable,
+  });
+
   if (error) throw handleSupabaseError(error, 'driverAvailability');
 }

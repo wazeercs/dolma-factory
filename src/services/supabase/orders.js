@@ -11,6 +11,68 @@ export async function fetchOrders({ branchId = null, onlyActive = false } = {}) 
   return data || [];
 }
 
+
+export async function fetchDriverOrders(driverId, { onlyActive = false } = {}) {
+  if (!driverId) return [];
+
+  let query = supabase
+    .from('orders')
+    .select(`
+      id,
+      order_number,
+      customer_name,
+      customer_phone,
+      order_type,
+      delivery_address,
+      delivery_location,
+      total,
+      status,
+      created_at,
+      order_items (
+        id,
+        product_name,
+        variant_name,
+        flavor_name,
+        quantity
+      )
+    `)
+    .eq('driver_id', driverId)
+    .order('created_at', { ascending: false });
+
+  if (onlyActive) {
+    query = query.not(
+      'status',
+      'in',
+      '("delivered","cancelled","rejected")'
+    );
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw handleSupabaseError(error, 'driverOrders');
+  }
+
+  return data || [];
+}
+
+export async function fetchDriverCompletedToday(driverId, startIso) {
+  if (!driverId || !startIso) return [];
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('driver_id', driverId)
+    .eq('status', 'delivered')
+    .gte('created_at', startIso);
+
+  if (error) {
+    throw handleSupabaseError(error, 'driverCompletedToday');
+  }
+
+  return data || [];
+}
+
 export async function fetchOrderById(orderId) {
   const { data, error } = await supabase.from('orders')
     .select('*, order_items (*)').eq('id', orderId).single();
@@ -82,11 +144,7 @@ export async function setOrderStatus(orderId, newStatus, driverId = null, driver
   return data;
 }
 
-export async function toggleDriverAvailability(driverId, isAvailable) {
-  const { error } = await supabase.from('drivers')
-    .update({ is_available: isAvailable }).eq('id', driverId);
-  if (error) throw handleSupabaseError(error, 'driverAvailability');
-}
+
 
 export async function toggleProductStock(productId, inStock) {
   const { error } = await supabase.from('products')

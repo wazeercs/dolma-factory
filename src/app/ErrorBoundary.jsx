@@ -41,7 +41,7 @@ export default class ErrorBoundary extends React.Component {
               نعتذر عن الإزعاج. يمكنك إعادة تحميل الصفحة أو العودة للرئيسية.
             </p>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.MODE === 'development' && this.state.error && (
               <details className="text-right bg-gray-100 dark:bg-gray-700 rounded-lg p-3 mb-4">
                 <summary className="cursor-pointer text-xs font-bold text-gray-700 dark:text-gray-200">
                   تفاصيل الخطأ (للمطور)

@@ -31,7 +31,7 @@ export default function ReportsTab() {
 
       const [s, tp] = await Promise.all([
         fetchReportSummaryV2(start, now, branchId),
-        fetchTopProducts(start, now, 10),
+        fetchTopProducts(start, now, 10, branchId),
       ]);
       setStats(s);
       setTopProducts(tp);

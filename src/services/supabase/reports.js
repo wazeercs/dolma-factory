@@ -12,11 +12,12 @@ export async function fetchReportSummary(from, to, branchId = null) {
   return data;
 }
 
-export async function fetchTopProducts(from, to, limit = 10) {
+export async function fetchTopProducts(from, to, limit = 10, branchId = null) {
   const { data, error } = await supabase.rpc('report_top_products', {
     p_from: from.toISOString(),
     p_to: to.toISOString(),
     p_limit: limit,
+    p_branch_id: branchId,
   });
   if (error) throw handleSupabaseError(error, 'topProducts');
   return data?.products || [];

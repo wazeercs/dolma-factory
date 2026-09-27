@@ -96,7 +96,7 @@ export default function CustomerApp() {
     else setPhoneError('');
   };
 
-  const handleLocateMe = () => {
+  const handleLocateMe = async () => {
     if (!navigator.geolocation) {
       setLocationError('المتصفح لا يدعم تحديد الموقع');
       return;
@@ -104,6 +104,25 @@ export default function CustomerApp() {
 
     setLocationLoading(true);
     setLocationError('');
+
+    try {
+      if (navigator.permissions?.query) {
+        const permission = await navigator.permissions.query({
+          name: 'geolocation',
+        });
+
+        if (permission.state === 'denied') {
+          setLocationLoading(false);
+          setLocationError(
+            'صلاحية الموقع محظورة لهذا الموقع. افتح إعدادات الموقع في المتصفح واختر «السماح»، ثم اضغط «تحديد موقعي الحالي» مرة أخرى.'
+          );
+          return;
+        }
+      }
+    } catch {
+      // بعض المتصفحات لا تدعم Permissions API بشكل كامل.
+      // نتابع مباشرة باستخدام Geolocation API.
+    }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -119,7 +138,7 @@ export default function CustomerApp() {
 
         if (error.code === 1) {
           setLocationError(
-            'تم رفض إذن الموقع. فعّل صلاحية الموقع من إعدادات المتصفح ثم اضغط «تحديد موقعي الحالي» مرة أخرى.'
+            'تم رفض إذن الموقع. افتح إعدادات الموقع في المتصفح واختر «السماح»، ثم اضغط «تحديد موقعي الحالي» مرة أخرى.'
           );
         } else if (error.code === 2) {
           setLocationError(
@@ -131,7 +150,7 @@ export default function CustomerApp() {
           );
         } else {
           setLocationError(
-            'تعذر تحديد موقعك. فعّل إذن الموقع ثم حاول مرة أخرى.'
+            'تعذر تحديد موقعك. تأكد من تشغيل الموقع ثم حاول مرة أخرى.'
           );
         }
       },

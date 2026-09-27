@@ -14,7 +14,6 @@ import RamadanBanner from './components/RamadanBanner';
 import SearchBar from './components/SearchBar';
 import CategoryFilter from './components/CategoryFilter';
 import BottomNav from './components/BottomNav';
-import LoyaltyBadge from './components/LoyaltyBadge';
 
 export default function CustomerApp() {
   const toast = useToast();
@@ -48,7 +47,7 @@ export default function CustomerApp() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
-  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeNav, setActiveNav] = useState('home');
@@ -86,7 +85,9 @@ export default function CustomerApp() {
   };
 
   const cartTotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
-  const discountAmount = appliedCoupon?.discountAmount || 0;
+  const couponDiscountAmount = appliedCoupon?.discountAmount || 0;
+  const loyaltyDiscountAmount = loyaltyPoints / 10;
+  const discountAmount = couponDiscountAmount + loyaltyDiscountAmount;
   const grandTotal = Math.max(0, cartTotal - discountAmount);
 
   const handlePhoneChange = (v) => {
@@ -183,6 +184,7 @@ export default function CustomerApp() {
         paymentMethod: payMethod === 'cash' ? 'cash' : 'card',
         idempotencyKey,
         couponCode: appliedCoupon ? couponCode : null,
+        loyaltyPoints,
       }, cart);
 
       const info = { number: order.order_number, phone: phone.trim() };
@@ -196,6 +198,7 @@ export default function CustomerApp() {
       setCart([]);
       setAppliedCoupon(null);
       setCouponCode('');
+      setLoyaltyPoints(0);
       toast.success('تم إرسال طلبك بنجاح! 🎉');
     } catch (err) {
       console.error(err);
@@ -307,6 +310,8 @@ export default function CustomerApp() {
           onCouponCodeChange={setCouponCode}
           appliedCoupon={appliedCoupon}
           couponLoading={couponLoading}
+          loyaltyPoints={loyaltyPoints}
+          onLoyaltyPointsChange={setLoyaltyPoints}
           onApplyCoupon={handleApplyCoupon}
           onRemoveCoupon={removeCoupon}
           submitting={submitting}

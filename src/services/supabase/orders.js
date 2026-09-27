@@ -26,7 +26,14 @@ export async function createOrder(orderData, cartItems) {
     quantity: item.quantity,
   }));
 
-  const { data, error } = await supabase.rpc('create_order_secure', {
+  const loyaltyPoints = Number(orderData.loyaltyPoints || 0);
+
+  const rpcName =
+    loyaltyPoints > 0
+      ? 'create_order_secure_with_loyalty'
+      : 'create_order_secure';
+
+  const rpcArgs = {
     p_branch_id: orderData.branchId,
     p_customer_name: orderData.customerName,
     p_customer_phone: orderData.customerPhone,
@@ -40,7 +47,13 @@ export async function createOrder(orderData, cartItems) {
     p_idempotency_key: orderData.idempotencyKey || null,
     p_notes: orderData.notes || null,
     p_cart: cart,
-  });
+  };
+
+  if (loyaltyPoints > 0) {
+    rpcArgs.p_loyalty_points = loyaltyPoints;
+  }
+
+  const { data, error } = await supabase.rpc(rpcName, rpcArgs);
 
   if (error) throw handleSupabaseError(error, 'createOrder');
   if (!data?.success) throw new Error(data?.error || 'فشل إنشاء الطلب');

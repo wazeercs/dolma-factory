@@ -1,4 +1,5 @@
 import React from 'react';
+import LoyaltyBadge from './LoyaltyBadge';
 
 export default function CheckoutSheet({
   cartTotal, discountAmount, grandTotal,
@@ -8,6 +9,7 @@ export default function CheckoutSheet({
   locationLoading, locationError, onLocateMe,
   payMethod, onPayChange, couponCode, onCouponCodeChange,
   appliedCoupon, couponLoading, onApplyCoupon, onRemoveCoupon,
+  loyaltyPoints, onLoyaltyPointsChange,
   submitting, onSubmit, onClose, branchName,
 }) {
   return (
@@ -128,6 +130,14 @@ export default function CheckoutSheet({
               </div>
             </div>
           )}
+
+          <LoyaltyBadge
+            phone={phone}
+            cartTotal={cartTotal}
+            couponDiscount={appliedCoupon?.discountAmount || 0}
+            selectedPoints={loyaltyPoints || 0}
+            onPointsChange={onLoyaltyPointsChange}
+          />
 
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-dashed border-yellow-300 dark:border-yellow-700 rounded-xl p-3">
             <label className="font-bold text-gray-700 dark:text-gray-200 text-sm block mb-2">🎁 كود الخصم</label>

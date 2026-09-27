@@ -1,8 +1,20 @@
 import React from 'react';
 
 export default function DriverOrderCard({ order, onStartDelivery, onDeliver }) {
-  const lng = order.delivery_location?.coordinates?.[0] || 46.6753;
-  const lat = order.delivery_location?.coordinates?.[1] || 24.7136;
+  const coordinates = order.delivery_location?.coordinates;
+
+  const hasValidCoordinates =
+    Array.isArray(coordinates) &&
+    coordinates.length >= 2 &&
+    Number.isFinite(Number(coordinates[0])) &&
+    Number.isFinite(Number(coordinates[1]));
+
+  const lng = hasValidCoordinates ? Number(coordinates[0]) : null;
+  const lat = hasValidCoordinates ? Number(coordinates[1]) : null;
+
+  const mapsUrl = hasValidCoordinates
+    ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+    : null;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border-r-4 border-blue-500">
@@ -59,14 +71,23 @@ export default function DriverOrderCard({ order, onStartDelivery, onDeliver }) {
 
         {order.status === 'out_for_delivery' && (
           <>
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold text-sm text-center"
-            >
-              🗺️ الخريطة
-            </a>
+            {mapsUrl ? (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold text-sm text-center"
+              >
+                🗺️ الخريطة
+              </a>
+            ) : (
+              <div
+                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 py-3 rounded-xl font-bold text-sm text-center"
+                title="موقع العميل غير متوفر"
+              >
+                📍 الموقع غير متوفر
+              </div>
+            )}
             <button
               onClick={() => onDeliver(order.id)}
               className="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold text-sm"

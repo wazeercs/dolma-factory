@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { useOrders } from '../../hooks/useSupabaseData';
+import { fetchDriverOrders, fetchDriverCompletedToday } from '../../services/supabase';
 import { updateOrderStatus, toggleDriverAvailability } from '../../hooks/useOrdersApi';
 import { useToast } from '../../components/Toast';
 import { useAuth } from '../auth/AuthProvider';
@@ -12,7 +12,42 @@ export default function DriverApp() {
   const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { orders } = useOrders();
+  const [orders, setOrders] = useState([]);
+  const [completedToday, setCompletedToday] = useState(0);
+
+  // تحميل طلبات هذا المندوب فقط من قاعدة البيانات
+  useEffect(() => {
+    if (!driver?.id) return;
+
+    let cancelled = false;
+
+    const loadDriverOrders = async () => {
+      try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const [activeOrders, deliveredToday] = await Promise.all([
+          fetchDriverOrders(driver.id, { onlyActive: true }),
+          fetchDriverCompletedToday(driver.id, startOfDay.toISOString()),
+        ]);
+
+        if (!cancelled) {
+          setOrders(activeOrders);
+          setCompletedToday(deliveredToday.length);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || 'فشل تحميل الطلبات');
+        }
+      }
+    };
+
+    loadDriverOrders();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [driver?.id]);
 
   // جلب بيانات المندوب من قاعدة البيانات
   useEffect(() => {
@@ -69,6 +104,20 @@ export default function DriverApp() {
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       await updateOrderStatus(orderId, newStatus);
+
+      if (driver?.id) {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const [activeOrders, deliveredToday] = await Promise.all([
+          fetchDriverOrders(driver.id, { onlyActive: true }),
+          fetchDriverCompletedToday(driver.id, startOfDay.toISOString()),
+        ]);
+
+        setOrders(activeOrders);
+        setCompletedToday(deliveredToday.length);
+      }
+
       toast.success(newStatus === 'delivered' ? 'تم التسليم بنجاح 🎉' : 'تم تحديث الطلب');
     } catch (err) {
       toast.error(err.message || 'فشل تحديث الطلب');
@@ -107,20 +156,8 @@ export default function DriverApp() {
     );
   }
 
-  const myOrders = orders.filter(
-    (o) =>
-      o.driver_id === driver.id &&
-      o.status !== 'delivered' &&
-      o.status !== 'cancelled' &&
-      o.status !== 'rejected'
-  );
-
-  const completedToday = orders.filter(
-    (o) =>
-      o.driver_id === driver.id &&
-      o.status === 'delivered' &&
-      new Date(o.created_at).toDateString() === new Date().toDateString()
-  ).length;
+  // الطلبات محملة مسبقاً ومقيدة في قاعدة البيانات بالمندوب الحالي
+  const myOrders = orders;
 
   return (
     <div className="p-4 max-w-2xl mx-auto">

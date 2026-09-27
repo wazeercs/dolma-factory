@@ -6,11 +6,11 @@ export default function BranchesTab({ branches }) {
   const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editBranch, setEditBranch] = useState(null);
-  const [form, setForm] = useState({ name: '', address: '', phone: '', lat: 24.7136, lng: 46.6753, delivery_radius_km: 10 });
+  const [form, setForm] = useState({ name: '', address: '', phone: '', lat: '', lng: '', delivery_radius_km: 10 });
 
   const openAdd = () => {
     setEditBranch(null);
-    setForm({ name: '', address: '', phone: '', lat: 24.7136, lng: 46.6753, delivery_radius_km: 10 });
+    setForm({ name: '', address: '', phone: '', lat: '', lng: '', delivery_radius_km: 10 });
     setShowForm(true);
   };
 
@@ -20,15 +20,38 @@ export default function BranchesTab({ branches }) {
       name: b.name,
       address: b.address || '',
       phone: b.phone || '',
-      lat: b.location?.coordinates?.[1] || 24.7136,
-      lng: b.location?.coordinates?.[0] || 46.6753,
+      lat: b.location?.coordinates?.[1] ?? '',
+      lng: b.location?.coordinates?.[0] ?? '',
       delivery_radius_km: b.delivery_radius_km || 10,
     });
     setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return toast.warning('يرجى إدخال اسم الفرع');
+    if (!form.name.trim()) {
+      return toast.warning('يرجى إدخال اسم الفرع');
+    }
+
+    if (!editBranch) {
+      const lat = Number(form.lat);
+      const lng = Number(form.lng);
+      const radius = Number(form.delivery_radius_km);
+
+      if (
+        !Number.isFinite(lat) ||
+        lat < -90 ||
+        lat > 90 ||
+        !Number.isFinite(lng) ||
+        lng < -180 ||
+        lng > 180
+      ) {
+        return toast.warning('يرجى إدخال إحداثيات صحيحة للفرع');
+      }
+
+      if (!Number.isFinite(radius) || radius <= 0 || radius > 100) {
+        return toast.warning('يرجى إدخال نطاق توصيل صحيح');
+      }
+    }
     try {
       if (editBranch) {
         await updateBranch(editBranch.id, {

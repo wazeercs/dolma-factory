@@ -175,17 +175,30 @@ export function useBranches() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-    withRetry(() => fetchActiveBranches(), {
-      maxAttempts: 3,
-      shouldRetry: isRetryableError,
-    })
-      .then((data) => mounted && setBranches(data))
-      .catch((err) => console.error('branches:', err))
-      .finally(() => mounted && setLoading(false));
-    return () => { mounted = false; };
+  const load = useCallback(async () => {
+    try {
+      const data = await withRetry(() => fetchActiveBranches(), {
+        maxAttempts: 3,
+        shouldRetry: isRetryableError,
+      });
+      setBranches(data);
+    } catch (err) {
+      console.error('branches:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useRealtimeChannel(
+    'branches-active',
+    [{ event: '*', table: 'branches', filter: 'is_active=eq.true' }],
+    load,
+    [load]
+  );
 
   return branches;
 }

@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { useDrivers, useBranches } from '../../../hooks/useSupabaseData';
+import { useDrivers } from '../../../hooks/useSupabaseData';
 import { createDriver, updateDriver, deleteDriver } from '../../../services/supabase/admin-crud';
 import { fetchAllProfiles, linkDriverUser, unlinkDriverUser } from '../../../services/supabase/admin';
 import { useToast } from '../../../components/Toast';
 import { useEffect } from 'react';
 
-export default function DriversTab() {
+export default function DriversTab({ branches = [] }) {
   const toast = useToast();
-  const branches = useBranches();
   const { drivers, refetch } = useDrivers();
   const [profiles, setProfiles] = useState([]);
   const [showForm, setShowForm] = useState(false);

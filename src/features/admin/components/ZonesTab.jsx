@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useBranches } from '../../../hooks/useSupabaseData';
 import { fetchDeliveryZones, updateDeliveryZone } from '../../../services/supabase/admin';
 import { useToast } from '../../../components/Toast';
 
-export default function ZonesTab() {
+export default function ZonesTab({ branches = [] }) {
   const toast = useToast();
-  const branches = useBranches();
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);

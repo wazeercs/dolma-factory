@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useBranches } from '../../../hooks/useSupabaseData';
 import { fetchAllProfiles, updateUserRole } from '../../../services/supabase/admin';
 import { useToast } from '../../../components/Toast';
 import { ROLE_LABELS } from '../../../lib/constants';
 
 const ROLES = ['customer', 'cashier', 'branch_manager', 'driver', 'admin', 'super_admin'];
 
-export default function UsersTab() {
+export default function UsersTab({ branches = [] }) {
   const toast = useToast();
-  const branches = useBranches();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 

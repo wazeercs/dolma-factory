@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useBranches } from '../../../hooks/useSupabaseData';
 import { fetchTopProducts } from '../../../services/supabase/reports';
 import { fetchReportSummaryV2 } from '../../../services/supabase/search';
 import { useToast } from '../../../components/Toast';
@@ -10,9 +9,8 @@ const RANGES = [
   { key: 'month', label: 'هذا الشهر', days: 30 },
 ];
 
-export default function ReportsTab() {
+export default function ReportsTab({ branches = [] }) {
   const toast = useToast();
-  const branches = useBranches();
   const [range, setRange] = useState('today');
   const [branchId, setBranchId] = useState(null);
   const [stats, setStats] = useState(null);

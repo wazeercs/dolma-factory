@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useBranches } from '../../../hooks/useSupabaseData';
 import { fetchBusinessHours, updateBusinessHours } from '../../../services/supabase/admin';
 import { useToast } from '../../../components/Toast';
 
 const DAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-export default function HoursTab() {
+export default function HoursTab({ branches = [] }) {
   const toast = useToast();
-  const branches = useBranches();
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [hours, setHours] = useState({});
   const [loading, setLoading] = useState(true);

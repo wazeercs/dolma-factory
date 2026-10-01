@@ -77,7 +77,7 @@ export default function AdminApp() {
       </div>
 
       {tab === 'dash' && <StatsCards stats={stats} />}
-      {tab === 'reports' && <ReportsTab />}
+      {tab === 'reports' && <ReportsTab branches={branches} />}
       {tab === 'products' && (
         <ProductsTab
           products={products}
@@ -88,10 +88,10 @@ export default function AdminApp() {
       )}
       {tab === 'orders' && <OrdersTab orders={orders} />}
       {tab === 'branches' && <BranchesTab branches={branches} />}
-      {tab === 'drivers' && <DriversTab />}
-      {tab === 'hours' && <HoursTab />}
-      {tab === 'zones' && <ZonesTab />}
-      {tab === 'users' && <UsersTab />}
+      {tab === 'drivers' && <DriversTab branches={branches} />}
+      {tab === 'hours' && <HoursTab branches={branches} />}
+      {tab === 'zones' && <ZonesTab branches={branches} />}
+      {tab === 'users' && <UsersTab branches={branches} />}
       {tab === 'loyalty' && <LoyaltyTab />}
       {tab === 'operation' && <BranchStatusTab branches={branches} />}
     </div>

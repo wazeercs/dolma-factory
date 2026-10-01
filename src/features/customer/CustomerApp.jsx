@@ -14,6 +14,7 @@ import RamadanBanner from './components/RamadanBanner';
 import SearchBar from './components/SearchBar';
 import CategoryFilter from './components/CategoryFilter';
 import BottomNav from './components/BottomNav';
+import BranchOperatingStatus from './components/BranchOperatingStatus';
 
 export default function CustomerApp() {
   const toast = useToast();
@@ -21,6 +22,12 @@ export default function CustomerApp() {
   const branches = useBranches();
   const [selectedBranch, setSelectedBranch] = useState(null);
   const { products, loading, error } = useProducts(selectedBranch?.id);
+
+  // التحكم في ظهور المنتجات للعميل حسب وضع الفرع
+  const visibleProducts =
+    selectedBranch?.product_visibility_mode === 'IN_STOCK_ONLY'
+      ? products.filter((product) => product.in_stock)
+      : products;
 
   const [cart, setCart] = useState([]);
   const [sel, setSel] = useState(null);
@@ -192,6 +199,29 @@ export default function CustomerApp() {
     if (!validateSaudiPhone(phone)) return toast.warning('رقم الجوال غير صحيح');
     if (!selectedBranch) return toast.warning('لا يوجد فرع متاح');
 
+    if (!selectedBranch.accepts_orders) {
+      return toast.warning(
+        selectedBranch.pause_reason || 'استقبال الطلبات متوقف حاليًا'
+      );
+    }
+
+    if (orderType === 'delivery' && !selectedBranch.delivery_enabled) {
+      return toast.warning('التوصيل غير متاح حاليًا لهذا الفرع');
+    }
+
+    if (orderType === 'pickup' && !selectedBranch.pickup_enabled) {
+      return toast.warning('الاستلام من الفرع غير متاح حاليًا');
+    }
+
+    if (
+      Number(selectedBranch.minimum_order_amount || 0) > 0 &&
+      cartTotal < Number(selectedBranch.minimum_order_amount)
+    ) {
+      return toast.warning(
+        `الحد الأدنى للطلب ${Number(selectedBranch.minimum_order_amount)} ريال`
+      );
+    }
+
     if (orderType === 'delivery' && !deliveryLocation) {
       return toast.warning('حدد موقع التوصيل أولاً');
     }
@@ -272,7 +302,10 @@ export default function CustomerApp() {
       )}
 
       {selectedBranch && (
-        <div className="mb-4 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-200 dark:border-teal-800 rounded-2xl p-3 flex items-center gap-3">
+        <>
+          <BranchOperatingStatus branch={selectedBranch} />
+
+          <div className="mb-4 bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-200 dark:border-teal-800 rounded-2xl p-3 flex items-center gap-3">
           <span className="text-2xl">🏬</span>
           <div className="flex-1">
             <p className="text-xs text-gray-500 dark:text-gray-400">الفرع المختار</p>
@@ -291,6 +324,7 @@ export default function CustomerApp() {
             ))}
           </select>
         </div>
+        </>
       )}
 
       {error && (
@@ -299,7 +333,11 @@ export default function CustomerApp() {
         </div>
       )}
 
-      <MenuGrid products={products} onSelect={setSel} loading={loading} />
+      <MenuGrid
+        products={visibleProducts}
+        onSelect={setSel}
+        loading={loading}
+      />
 
       {cart.length > 0 && (
         <div

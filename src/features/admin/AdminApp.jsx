@@ -12,6 +12,7 @@ import ZonesTab from './components/ZonesTab';
 import UsersTab from './components/UsersTab';
 import ReportsTab from './components/ReportsTab';
 import LoyaltyTab from './components/LoyaltyTab';
+import BranchStatusTab from './components/BranchStatusTab';
 
 export default function AdminApp() {
   const toast = useToast();
@@ -56,6 +57,7 @@ export default function AdminApp() {
     ['zones', '📍 التوصيل'],
     ['users', '👥 المستخدمون'],
     ['loyalty', '🎁 الولاء'],
+    ['operation', '⚙️ حالة التشغيل'],
   ];
 
   return (
@@ -91,6 +93,7 @@ export default function AdminApp() {
       {tab === 'zones' && <ZonesTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'loyalty' && <LoyaltyTab />}
+      {tab === 'operation' && <BranchStatusTab branches={branches} />}
     </div>
   );
 }

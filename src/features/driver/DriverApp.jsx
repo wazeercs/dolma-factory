@@ -59,7 +59,7 @@ export default function DriverApp() {
 
       const { data, error } = await supabase
         .from('drivers')
-        .select('*')
+        .select('id, name, is_available')
         .eq('user_id', user.id)
         .maybeSingle();
 

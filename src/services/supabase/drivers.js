@@ -2,7 +2,14 @@ import { supabase } from '../../lib/supabaseClient';
 import { handleSupabaseError } from '../../lib/errors';
 
 export async function fetchDrivers(branchId = null) {
-  let q = supabase.from('drivers').select('*');
+  let q = supabase.from('drivers').select(`
+    id,
+    name,
+    phone,
+    branch_id,
+    user_id,
+    is_available
+  `);
   if (branchId) q = q.eq('branch_id', branchId);
   const { data, error } = await q.order('name');
   if (error) throw handleSupabaseError(error, 'drivers');

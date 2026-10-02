@@ -21,7 +21,15 @@ export async function redeemPoints(phone, points) {
 export async function fetchLoyaltyDashboard() {
   const { data, error } = await supabase
     .from('customer_loyalty')
-    .select('*')
+    .select(`
+      id,
+      full_name,
+      phone,
+      tier,
+      total_orders,
+      total_spent,
+      points
+    `)
     .order('points', { ascending: false })
     .limit(100);
   if (error) throw handleSupabaseError(error, 'loyaltyDash');

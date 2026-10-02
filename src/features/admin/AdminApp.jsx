@@ -18,8 +18,8 @@ export default function AdminApp() {
   const toast = useToast();
   const [tab, setTab] = useState('dash');
   const branches = useBranches();
-  const { products, refetch: refetchProducts } = useProducts();
-  const { orders } = useOrders();
+  const { products, refetch: refetchProducts } = useProducts(null, tab === 'products');
+  const { orders } = useOrders(null, false, tab === 'dash' || tab === 'orders');
 
   const handleToggleStock = async (id, current) => {
     try {

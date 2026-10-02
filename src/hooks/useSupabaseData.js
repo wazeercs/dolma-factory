@@ -9,20 +9,66 @@ import {
   trackOrder,
 } from '../services/supabase';
 
-function useRealtimeChannel(channelName, configs, callback, deps = []) {
+function useRealtimeChannel(channelName, configs, callback, deps = [], enabled = true) {
   const [status, setStatus] = useState('connecting');
   const channelRef = useRef(null);
+  const callbackTimerRef = useRef(null);
+  const callbackInFlightRef = useRef(false);
+  const callbackQueuedRef = useRef(false);
+  const latestPayloadRef = useRef(null);
 
   useEffect(() => {
-    if (!channelName || !configs?.length) return;
+    if (!enabled || !channelName || !configs?.length) return;
     if (channelRef.current) supabase.removeChannel(channelRef.current);
 
     let channel = supabase.channel(channelName);
+
+    const scheduleCallback = (payload) => {
+      latestPayloadRef.current = payload;
+
+      if (callbackTimerRef.current !== null) return;
+
+      callbackTimerRef.current = setTimeout(async () => {
+        callbackTimerRef.current = null;
+
+        if (callbackInFlightRef.current) {
+          callbackQueuedRef.current = true;
+          return;
+        }
+
+        callbackInFlightRef.current = true;
+        callbackQueuedRef.current = false;
+
+        try {
+          await callback(latestPayloadRef.current);
+        } finally {
+          callbackInFlightRef.current = false;
+
+          if (callbackQueuedRef.current && callbackTimerRef.current === null) {
+            callbackTimerRef.current = setTimeout(async () => {
+              callbackTimerRef.current = null;
+
+              if (callbackInFlightRef.current) return;
+
+              callbackInFlightRef.current = true;
+              callbackQueuedRef.current = false;
+
+              try {
+                await callback(latestPayloadRef.current);
+              } finally {
+                callbackInFlightRef.current = false;
+              }
+            }, 150);
+          }
+        }
+      }, 150);
+    };
+
     configs.forEach(({ event, schema, table, filter }) => {
       channel = channel.on(
         'postgres_changes',
         { event, schema: schema || 'public', table, ...(filter ? { filter } : {}) },
-        (payload) => callback(payload)
+        scheduleCallback
       );
     });
 
@@ -30,6 +76,14 @@ function useRealtimeChannel(channelName, configs, callback, deps = []) {
     channelRef.current = channel;
 
     return () => {
+      if (callbackTimerRef.current !== null) {
+        clearTimeout(callbackTimerRef.current);
+        callbackTimerRef.current = null;
+      }
+
+      callbackQueuedRef.current = false;
+      latestPayloadRef.current = null;
+
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
@@ -40,7 +94,7 @@ function useRealtimeChannel(channelName, configs, callback, deps = []) {
   return status;
 }
 
-export function useProducts(branchId = null) {
+export function useProducts(branchId = null, enabled = true) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,7 +114,10 @@ export function useProducts(branchId = null) {
     }
   }, [branchId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!enabled) return;
+    load();
+  }, [load, enabled]);
 
   useRealtimeChannel(
     `products-${branchId || 'all'}`,
@@ -70,13 +127,14 @@ export function useProducts(branchId = null) {
       { event: '*', table: 'product_flavors' },
     ],
     load,
-    [branchId]
+    [branchId, enabled],
+    enabled
   );
 
   return { products, loading, error, refetch: load };
 }
 
-export function useOrders(branchId = null, onlyActive = false) {
+export function useOrders(branchId = null, onlyActive = false, enabled = true) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -96,7 +154,10 @@ export function useOrders(branchId = null, onlyActive = false) {
     }
   }, [branchId, onlyActive]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!enabled) return;
+    load();
+  }, [load, enabled]);
 
   useRealtimeChannel(
     `orders-${branchId || 'all'}-${onlyActive ? 'active' : 'all'}`,
@@ -105,7 +166,8 @@ export function useOrders(branchId = null, onlyActive = false) {
       { event: '*', table: 'order_items' },
     ],
     load,
-    [branchId, onlyActive]
+    [branchId, onlyActive, enabled],
+    enabled
   );
 
   return { orders, loading, error, refetch: load };
@@ -131,9 +193,47 @@ export function useOrderTracking(orderNumber, phone) {
       }
     };
 
-    load();
-    const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
+    let interval = null;
+
+    const startPolling = () => {
+      if (interval !== null) return;
+      interval = setInterval(load, 5000);
+    };
+
+    const stopPolling = () => {
+      if (interval !== null) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    const checkAndPoll = async () => {
+      try {
+        const data = await withRetry(() => trackOrder(orderNumber, phone), {
+          maxAttempts: 2,
+          shouldRetry: isRetryableError,
+        });
+
+        setOrder(data);
+        setError(null);
+
+        // إيقاف التحديث الدوري عند انتهاء الطلب
+        if (['delivered', 'cancelled', 'rejected'].includes(data?.status)) {
+          stopPolling();
+        } else {
+          startPolling();
+        }
+      } catch (err) {
+        setError(err.message);
+        startPolling();
+      }
+    };
+
+    checkAndPoll();
+
+    return () => {
+      stopPolling();
+    };
   }, [orderNumber, phone]);
 
   return order;

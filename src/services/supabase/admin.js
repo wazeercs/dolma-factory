@@ -13,7 +13,7 @@ export async function fetchAllProfiles() {
 export async function fetchBusinessHours(branchId) {
   const { data, error } = await supabase
     .from('branch_business_hours')
-    .select('*')
+    .select('day_of_week, is_closed, open_time, close_time')
     .eq('branch_id', branchId)
     .order('day_of_week');
   if (error) throw handleSupabaseError(error, 'hours');
@@ -23,7 +23,7 @@ export async function fetchBusinessHours(branchId) {
 export async function fetchDeliveryZones(branchId) {
   const { data, error } = await supabase
     .from('delivery_zones')
-    .select('*')
+    .select('id, name, min_distance_km, max_distance_km, delivery_fee, min_order_amount')
     .eq('branch_id', branchId)
     .order('sort_order');
   if (error) throw handleSupabaseError(error, 'zones');

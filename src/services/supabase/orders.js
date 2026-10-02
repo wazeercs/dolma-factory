@@ -2,8 +2,35 @@ import { supabase } from '../../lib/supabaseClient';
 import { handleSupabaseError } from '../../lib/errors';
 
 export async function fetchOrders({ branchId = null, onlyActive = false } = {}) {
-  let query = supabase.from('orders').select('*, order_items (*)')
-    .order('created_at', { ascending: false });
+  let query = supabase.from('orders').select(`
+    id,
+    order_number,
+    customer_name,
+    customer_phone,
+    branch_id,
+    order_type,
+    delivery_address,
+    delivery_location,
+    payment_method,
+    subtotal,
+    delivery_fee,
+    discount,
+    coupon_code,
+    total,
+    status,
+    driver_id,
+    driver_name,
+    created_at,
+    order_items (
+      id,
+      product_name,
+      variant_name,
+      flavor_name,
+      quantity,
+      unit_price,
+      total_price
+    )
+  `).order('created_at', { ascending: false });
   if (branchId) query = query.eq('branch_id', branchId);
   if (onlyActive) query = query.not('status', 'in', '("delivered","cancelled","rejected")');
   const { data, error } = await query;

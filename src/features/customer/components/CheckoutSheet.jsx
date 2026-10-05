@@ -204,7 +204,7 @@ export default function CheckoutSheet({
             {orderType === 'delivery' && (
               <div className="flex justify-between">
                 <span>رسوم التوصيل:</span>
-                <b>تحسب تلقائياً</b>
+                <b>تحسب في الخادم</b>
               </div>
             )}
             {discountAmount > 0 && (
@@ -213,8 +213,8 @@ export default function CheckoutSheet({
               </div>
             )}
             <div className="flex justify-between text-lg font-black border-t dark:border-gray-600 pt-2 mt-2">
-              <span>الإجمالي:</span>
-              <span className="text-teal-700 dark:text-teal-400">{grandTotal} SR + رسوم التوصيل</span>
+              <span>الإجمالي قبل رسوم التوصيل:</span>
+              <span className="text-teal-700 dark:text-teal-400">{grandTotal} SR</span>
             </div>
           </div>
         </div>

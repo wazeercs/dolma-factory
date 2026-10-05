@@ -208,6 +208,9 @@ export default function CustomerApp() {
   const submitOrder = async () => {
     if (!name.trim()) return toast.warning('يرجى إدخال الاسم');
     if (!validateSaudiPhone(phone)) return toast.warning('رقم الجوال غير صحيح');
+    if (payMethod !== 'cash') {
+      return toast.warning('الدفع الإلكتروني غير متاح حاليًا. اختر الدفع نقدًا.');
+    }
     if (!selectedBranch) return toast.warning('لا يوجد فرع متاح');
 
     if (!selectedBranch.accepts_orders) {
@@ -458,7 +461,15 @@ export default function CustomerApp() {
           onNameChange={setName}
           onPhoneChange={handlePhoneChange}
           orderType={orderType}
-          onOrderTypeChange={setOrderType}
+          onOrderTypeChange={(type) => {
+            setOrderType(type);
+
+            if (type === 'pickup') {
+              setDeliveryLocation(null);
+              setDeliveryAddress('');
+              setLocationError('');
+            }
+          }}
           deliveryLocation={deliveryLocation}
           deliveryAddress={deliveryAddress}
           onDeliveryAddressChange={setDeliveryAddress}

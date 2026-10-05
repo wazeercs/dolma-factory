@@ -53,6 +53,7 @@ export default function CheckoutSheet({
               type="text"
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
+              maxLength={50}
               placeholder="اسمك الكامل"
               className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:border-teal-600 outline-none"
             />
@@ -64,6 +65,8 @@ export default function CheckoutSheet({
               type="tel"
               value={phone}
               onChange={(e) => onPhoneChange(e.target.value)}
+              maxLength={15}
+              inputMode="tel"
               placeholder="05xxxxxxxx"
               dir="ltr"
               className={`w-full p-3 rounded-xl border-2 outline-none bg-white dark:bg-gray-700 text-gray-800 dark:text-white ${
@@ -118,6 +121,7 @@ export default function CheckoutSheet({
                   <textarea
                     value={deliveryAddress}
                     onChange={(e) => onDeliveryAddressChange(e.target.value)}
+                    maxLength={300}
                     rows="2"
                     placeholder="الحي، الشارع، رقم المبنى، علامة مميزة..."
                     className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white outline-none focus:border-teal-600 resize-none"

@@ -125,8 +125,9 @@ export default function ProductModal({ product, onClose, onAdd }) {
                 {qty}
               </span>
               <button
-                onClick={() => setQty((q) => q + 1)}
-                className="text-2xl font-bold text-teal-700 dark:text-teal-400 w-8"
+                onClick={() => setQty((q) => Math.min(99, q + 1))}
+                disabled={qty >= 99}
+                className="text-2xl font-bold text-teal-700 dark:text-teal-400 w-8 disabled:opacity-40"
                 aria-label="زيادة الكمية"
               >
                 +

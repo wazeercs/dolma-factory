@@ -84,6 +84,20 @@ export function AuthProvider({ children }) {
       }
       if (data.user) {
         const prof = await fetchProfile(data.user.id);
+
+        if (!prof) {
+          await supabase.auth.signOut();
+          setSession(null);
+          return { success: false, error: 'تعذر تحميل بيانات الحساب' };
+        }
+
+        if (prof.is_active === false) {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+          return { success: false, error: 'هذا الحساب غير نشط. تواصل مع إدارة المطعم' };
+        }
+
         return { success: true, profile: prof };
       }
       return { success: false, error: 'فشل تسجيل الدخول' };

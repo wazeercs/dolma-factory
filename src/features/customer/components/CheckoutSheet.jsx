@@ -223,7 +223,7 @@ export default function CheckoutSheet({
         <div className="p-4 border-t dark:border-gray-700">
           <button
             onClick={onSubmit}
-            disabled={submitting}
+            disabled={submitting || couponLoading}
             className="w-full bg-teal-700 text-white py-4 rounded-xl font-black text-lg shadow-lg disabled:opacity-50"
           >
             {submitting ? '⏳ جاري الإرسال...' : 'تأكيد الطلب'}

@@ -53,6 +53,11 @@ export async function addFlavor(productId, name, extraPrice = 0, sortOrder = 0) 
   if (error) throw handleSupabaseError(error, 'addFlavor');
 }
 
+export async function updateFlavor(flavorId, updates) {
+  const { error } = await supabase.from('product_flavors').update(updates).eq('id', flavorId);
+  if (error) throw handleSupabaseError(error, 'updateFlavor');
+}
+
 export async function deleteFlavor(flavorId) {
   const { error } = await supabase.from('product_flavors').delete().eq('id', flavorId);
   if (error) throw handleSupabaseError(error, 'deleteFlavor');

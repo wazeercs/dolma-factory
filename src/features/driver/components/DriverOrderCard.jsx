@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function DriverOrderCard({ order, onStartDelivery, onDeliver }) {
+export default function DriverOrderCard({ order, onStartDelivery, onDeliver, busy = false }) {
   const coordinates = order.delivery_location?.coordinates;
 
   const hasValidCoordinates =
@@ -63,7 +63,8 @@ export default function DriverOrderCard({ order, onStartDelivery, onDeliver }) {
         {order.status === 'assigned' && (
           <button
             onClick={() => onStartDelivery(order.id)}
-            className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm"
+            disabled={busy}
+            className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-50"
           >
             🛵 بدء التوصيل
           </button>
@@ -90,7 +91,8 @@ export default function DriverOrderCard({ order, onStartDelivery, onDeliver }) {
             )}
             <button
               onClick={() => onDeliver(order.id)}
-              className="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold text-sm"
+              disabled={busy}
+              className="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-50"
             >
               ✅ تم التسليم
             </button>

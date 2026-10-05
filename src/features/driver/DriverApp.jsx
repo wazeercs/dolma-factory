@@ -6,6 +6,20 @@ import { useToast } from '../../components/Toast';
 import { useAuth } from '../auth/AuthProvider';
 import DriverOrderCard from './components/DriverOrderCard';
 
+function getRiyadhStartOfDayIso() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return new Date(
+    `${values.year}-${values.month}-${values.day}T00:00:00+03:00`
+  ).toISOString();
+}
+
 export default function DriverApp() {
   const toast = useToast();
   const { profile, user } = useAuth();
@@ -14,14 +28,15 @@ export default function DriverApp() {
   const [error, setError] = useState(null);
   const [orders, setOrders] = useState([]);
   const [completedToday, setCompletedToday] = useState(0);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [updatingAvailability, setUpdatingAvailability] = useState(false);
 
   // تحميل ومزامنة طلبات هذا المندوب فقط
   const loadDriverOrders = useCallback(async () => {
     if (!driver?.id) return;
 
     try {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+      const startOfDay = getRiyadhStartOfDayIso();
 
       const [activeOrders, deliveredToday] = await Promise.all([
         fetchDriverOrders(driver.id, { onlyActive: true }),
@@ -45,8 +60,7 @@ export default function DriverApp() {
       if (cancelled) return;
 
       try {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        const startOfDay = getRiyadhStartOfDayIso();
 
         const [activeOrders, deliveredToday] = await Promise.all([
           fetchDriverOrders(driver.id, { onlyActive: true }),
@@ -139,23 +153,32 @@ export default function DriverApp() {
   }, [driver?.id]);
 
   const handleToggleAvailability = async () => {
+    if (updatingAvailability) return;
+
+    setUpdatingAvailability(true);
     try {
       const newState = !driver.is_available;
       await toggleDriverAvailability(driver.id, newState);
-      setDriver({ ...driver, is_available: newState });
+      setDriver((current) => ({ ...current, is_available: newState }));
       toast.success(newState ? 'أنت الآن متاح ✅' : 'أنت الآن مشغول ⏸');
-    } catch {
-      toast.error('فشل تحديث الحالة');
+    } catch (err) {
+      toast.error(err.message || 'فشل تحديث الحالة');
+    } finally {
+      setUpdatingAvailability(false);
     }
   };
 
   const handleStatusChange = async (orderId, newStatus) => {
+    if (updatingOrderId === orderId) return;
+
+    setUpdatingOrderId(orderId);
     try {
       await updateOrderStatus(orderId, newStatus);
-
       toast.success(newStatus === 'delivered' ? 'تم التسليم بنجاح 🎉' : 'تم تحديث الطلب');
     } catch (err) {
       toast.error(err.message || 'فشل تحديث الطلب');
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -210,7 +233,8 @@ export default function DriverApp() {
         </div>
         <button
           onClick={handleToggleAvailability}
-          className={`px-4 py-2 rounded-xl font-bold text-sm ${
+          disabled={updatingAvailability}
+          className={`px-4 py-2 rounded-xl font-bold text-sm disabled:opacity-50 ${
             driver.is_available
               ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
               : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
@@ -237,6 +261,7 @@ export default function DriverApp() {
               order={o}
               onStartDelivery={(id) => handleStatusChange(id, 'out_for_delivery')}
               onDeliver={(id) => handleStatusChange(id, 'delivered')}
+              busy={updatingOrderId === o.id}
             />
           ))}
         </div>

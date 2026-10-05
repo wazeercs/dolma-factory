@@ -17,25 +17,43 @@ export default function BranchApp() {
   const branches = useBranches();
   const [adminSelectedBranch, setAdminSelectedBranch] = useState(null);
   const [printOrder, setPrintOrder] = useState(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   // القفل: الكاشير يستخدم فرعه فقط، الإدارة تختار
   const effectiveBranchId = isAdmin(role) 
     ? (adminSelectedBranch || myBranchId || branches[0]?.id)
     : myBranchId;
 
-  const { orders, loading } = useOrders(effectiveBranchId, true, Boolean(effectiveBranchId));
-  const { drivers } = useDrivers(effectiveBranchId, Boolean(effectiveBranchId));
+  const { orders, loading, error: ordersError } = useOrders(
+    effectiveBranchId,
+    true,
+    Boolean(effectiveBranchId)
+  );
+  const { drivers, error: driversError } = useDrivers(
+    effectiveBranchId,
+    Boolean(effectiveBranchId)
+  );
 
   const newOrders = orders.filter((o) => o.status === 'pending');
   const hasNew = newOrders.length > 0;
   const { initAudio, disableAudio, enabled: audioEnabled } = useAudioAlarm(hasNew);
 
   const handleStatus = async (orderId, status, driverId = null, driverName = null) => {
+    if (!isOnline) {
+      toast.error('لا يوجد اتصال بالإنترنت');
+      return;
+    }
+
+    if (updatingOrderId === orderId) return;
+
+    setUpdatingOrderId(orderId);
     try {
       await updateOrderStatus(orderId, status, driverId, driverName);
       toast.success('تم تحديث حالة الطلب');
     } catch (err) {
       toast.error(err.message || 'فشل تحديث حالة الطلب');
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -134,6 +152,12 @@ export default function BranchApp() {
         </div>
       </div>
 
+      {(ordersError || driversError) && (
+        <div className="bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 p-3 rounded-xl mb-3 text-sm font-bold">
+          تعذر تحديث بعض بيانات الشاشة. حاول مرة أخرى.
+        </div>
+      )}
+
       <AudioAlarmBanner
         hasNew={hasNew}
         newCount={newOrders.length}
@@ -150,6 +174,7 @@ export default function BranchApp() {
             onAdvance={handleStatus}
             onAssign={handleAssign}
             onPrint={setPrintOrder}
+            busy={updatingOrderId === o.id}
           />
         ))}
       </div>

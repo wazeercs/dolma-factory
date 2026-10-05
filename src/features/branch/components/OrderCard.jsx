@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../../../lib/constants';
 
-export default function OrderCard({ order, drivers, onAdvance, onAssign, onPrint }) {
+export default function OrderCard({ order, drivers, onAdvance, onAssign, onPrint, busy = false }) {
   const label = ORDER_STATUS_LABELS[order.status] || order.status;
   const borderColor = ORDER_STATUS_COLORS[order.status] || 'border-gray-400';
 
@@ -136,14 +136,16 @@ export default function OrderCard({ order, drivers, onAdvance, onAssign, onPrint
               <>
                 <button
                   onClick={() => onAdvance(order.id, 'confirmed')}
-                  className="bg-teal-600 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95"
+                  disabled={busy}
+                  className="bg-teal-600 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95 disabled:opacity-50"
                   aria-label="تأكيد الطلب"
                 >
                   تأكيد
                 </button>
                 <button
                   onClick={() => onAdvance(order.id, 'rejected')}
-                  className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-xs active:scale-95"
+                  disabled={busy}
+                  className="bg-red-600 text-white px-3 py-2 rounded-lg font-bold text-xs active:scale-95 disabled:opacity-50"
                   aria-label="رفض الطلب"
                 >
                   رفض
@@ -154,7 +156,8 @@ export default function OrderCard({ order, drivers, onAdvance, onAssign, onPrint
             {order.status === 'confirmed' && (
               <button
                 onClick={() => onAdvance(order.id, 'preparing')}
-                className="bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95"
+                disabled={busy}
+                className="bg-yellow-500 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95 disabled:opacity-50"
                 aria-label="بدء التحضير"
               >
                 بدء التحضير
@@ -164,7 +167,8 @@ export default function OrderCard({ order, drivers, onAdvance, onAssign, onPrint
             {order.status === 'preparing' && (
               <button
                 onClick={() => onAdvance(order.id, 'ready_for_delivery')}
-                className="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95"
+                disabled={busy}
+                className="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95 disabled:opacity-50"
                 aria-label="جاهز للتوصيل"
               >
                 جاهز للتوصيل
@@ -173,6 +177,7 @@ export default function OrderCard({ order, drivers, onAdvance, onAssign, onPrint
 
             {order.status === 'ready_for_delivery' && (
               <select
+                disabled={busy}
                 onChange={(e) => {
                   const driverId = e.target.value;
                   if (!driverId) return;
@@ -192,7 +197,8 @@ export default function OrderCard({ order, drivers, onAdvance, onAssign, onPrint
             {order.status === 'assigned' && (
               <button
                 onClick={() => onAdvance(order.id, 'out_for_delivery')}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95"
+                disabled={busy}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95 disabled:opacity-50"
                 aria-label="خرج للتوصيل"
               >
                 خرج للتوصيل
@@ -202,7 +208,8 @@ export default function OrderCard({ order, drivers, onAdvance, onAssign, onPrint
             {order.status === 'out_for_delivery' && (
               <button
                 onClick={() => onAdvance(order.id, 'delivered')}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95"
+                disabled={busy}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95 disabled:opacity-50"
                 aria-label="تم التسليم"
               >
                 تم التسليم

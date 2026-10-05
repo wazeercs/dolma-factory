@@ -30,8 +30,14 @@ export default function AdminApp() {
   };
 
   const handleUpdatePrice = async (variantId, newPrice) => {
+    const price = Number(newPrice);
+    if (!Number.isFinite(price) || price < 0) {
+      toast.warning('السعر غير صحيح');
+      return;
+    }
+
     try {
-      await updateVariantPrice(variantId, parseFloat(newPrice));
+      await updateVariantPrice(variantId, price);
       await refetchProducts();
       toast.success('تم التحديث');
     } catch { toast.error('فشل'); }

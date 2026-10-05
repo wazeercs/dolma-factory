@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { useBranches } from '../../../hooks/useSupabaseData';
-import { createProductFull, uploadProductImage, addVariant, addFlavor, updateProduct, deleteVariant, deleteFlavor } from '../../../services/supabase/admin-crud';
+import {
+  createProductFull,
+  uploadProductImage,
+  addVariant,
+  updateVariant,
+  addFlavor,
+  updateFlavor,
+  updateProduct,
+  deleteVariant,
+  deleteFlavor,
+} from '../../../services/supabase/admin-crud';
 import { useToast } from '../../../components/Toast';
 
 const CATEGORIES = ['محاشي', 'ورق عنب', 'وجبات عائلية', 'إضافات', 'مشروبات', 'حلويات', 'عروض'];
@@ -78,8 +88,23 @@ export default function ProductFormModal({ product, onClose, onSaved }) {
 
   const handleSave = async () => {
     if (!name.trim()) return toast.warning('يرجى إدخال اسم المنتج');
+    if (name.trim().length > 100) return toast.warning('اسم المنتج طويل جدًا');
     if (!branchId) return toast.warning('يرجى اختيار الفرع');
-    if (variants.length === 0 || !variants[0].name) return toast.warning('أضف على الأقل حجم واحد');
+
+    const validVariants = variants.filter((v) => v.name?.trim());
+    if (validVariants.length === 0) return toast.warning('أضف على الأقل حجم واحد');
+
+    const invalidVariant = validVariants.find(
+      (v) => !Number.isFinite(Number(v.price)) || Number(v.price) < 0
+    );
+    if (invalidVariant) return toast.warning('يوجد سعر حجم غير صحيح');
+
+    const validFlavors = flavors.filter((f) => f.name?.trim());
+    const invalidFlavor = validFlavors.find(
+      (f) => !Number.isFinite(Number(f.extra_price)) || Number(f.extra_price) < 0
+    );
+    if (invalidFlavor) return toast.warning('يوجد سعر نكهة غير صحيح');
+
     if (!imageUrl) return toast.warning('يرجى رفع صورة المنتج');
 
     setSaving(true);
@@ -91,12 +116,28 @@ export default function ProductFormModal({ product, onClose, onSaved }) {
           category,
           image_url: imageUrl,
         });
-        // إضافة variants/flavors الجديدة فقط (التي ليس لها id)
-        for (const v of variants) {
-          if (!v.id && v.name) await addVariant(product.id, v.name, v.price);
+        for (const v of validVariants) {
+          const payload = {
+            name: v.name.trim(),
+            price: Number(v.price),
+          };
+          if (v.id) {
+            await updateVariant(v.id, payload);
+          } else {
+            await addVariant(product.id, payload.name, payload.price);
+          }
         }
-        for (const f of flavors) {
-          if (!f.id && f.name) await addFlavor(product.id, f.name, f.extra_price || 0);
+
+        for (const f of validFlavors) {
+          const payload = {
+            name: f.name.trim(),
+            extra_price: Number(f.extra_price || 0),
+          };
+          if (f.id) {
+            await updateFlavor(f.id, payload);
+          } else {
+            await addFlavor(product.id, payload.name, payload.extra_price);
+          }
         }
         toast.success('تم التحديث ✅');
       } else {

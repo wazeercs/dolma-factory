@@ -109,7 +109,7 @@ export function AuthProvider({ children }) {
       profile,
       role: profile?.role || null,
       branchId: profile?.branch_id || null,
-      isAuthenticated: !!session,
+      isAuthenticated: !!session && !!profile && profile.is_active !== false,
       loading,
       error,
       login,

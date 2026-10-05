@@ -153,10 +153,6 @@ export default function DriverApp() {
     try {
       await updateOrderStatus(orderId, newStatus);
 
-      if (driver?.id) {
-        await loadDriverOrders();
-      }
-
       toast.success(newStatus === 'delivered' ? 'تم التسليم بنجاح 🎉' : 'تم تحديث الطلب');
     } catch (err) {
       toast.error(err.message || 'فشل تحديث الطلب');

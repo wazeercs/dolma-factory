@@ -251,7 +251,7 @@ export function useOrderTracking(orderNumber, phone) {
   return order;
 }
 
-export function useDrivers(branchId = null) {
+export function useDrivers(branchId = null, enabled = true) {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -271,13 +271,17 @@ export function useDrivers(branchId = null) {
     }
   }, [branchId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!enabled) return;
+    load();
+  }, [load, enabled]);
 
   useRealtimeChannel(
     `drivers-${branchId || 'all'}`,
     [{ event: '*', table: 'drivers', filter: branchId ? `branch_id=eq.${branchId}` : undefined }],
     load,
-    [branchId]
+    [branchId, enabled],
+    enabled
   );
 
   return { drivers, loading, error, refetch: load };

@@ -23,8 +23,8 @@ export default function BranchApp() {
     ? (adminSelectedBranch || myBranchId || branches[0]?.id)
     : myBranchId;
 
-  const { orders, loading } = useOrders(effectiveBranchId, true);
-  const { drivers } = useDrivers(effectiveBranchId);
+  const { orders, loading } = useOrders(effectiveBranchId, true, Boolean(effectiveBranchId));
+  const { drivers } = useDrivers(effectiveBranchId, Boolean(effectiveBranchId));
 
   const newOrders = orders.filter((o) => o.status === 'pending');
   const hasNew = newOrders.length > 0;

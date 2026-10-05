@@ -148,7 +148,8 @@ export default function CheckoutSheet({
                   value={couponCode}
                   onChange={(e) => onCouponCodeChange(e.target.value.toUpperCase())}
                   placeholder="مثال: WELCOME10"
-                  className="flex-1 p-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white outline-none text-sm font-bold"
+                  disabled={couponLoading}
+                  className="flex-1 p-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white outline-none text-sm font-bold disabled:opacity-60"
                 />
                 <button
                   onClick={onApplyCoupon}

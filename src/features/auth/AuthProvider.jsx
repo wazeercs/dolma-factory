@@ -51,13 +51,18 @@ export function AuthProvider({ children }) {
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
+
       setSession(newSession);
+
       if (event === 'SIGNED_IN' && newSession?.user) {
-        await fetchProfile(newSession.user.id);
+        fetchProfile(newSession.user.id).finally(() => {
+          if (mounted) setLoading(false);
+        });
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
+        setLoading(false);
       }
     });
 

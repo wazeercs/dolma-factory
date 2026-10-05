@@ -73,6 +73,10 @@ export default function CustomerApp() {
     if (branches.length > 0 && !selectedBranch) setSelectedBranch(branches[0]);
   }, [branches, selectedBranch]);
 
+  useEffect(() => {
+    setActiveCategory(null);
+  }, [selectedBranch?.id]);
+
   const handleAddToCart = (product, flavor, variant, qty) => {
     if (!variant) return toast.warning('الرجاء اختيار الحجم');
     if (product.flavors?.length > 0 && !flavor) return toast.warning('الرجاء اختيار النكهة');

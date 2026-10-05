@@ -4,7 +4,6 @@ const TABS = [
   { key: 'home', icon: '🏠', label: 'الرئيسية' },
   { key: 'cart', icon: '🛒', label: 'السلة' },
   { key: 'tracking', icon: '📦', label: 'طلبي' },
-  { key: 'loyalty', icon: '🎁', label: 'نقاطي' },
 ];
 
 export default function BottomNav({ active, onChange, cartCount = 0, hasTracking = false }) {

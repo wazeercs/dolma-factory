@@ -333,8 +333,39 @@ export default function CustomerApp() {
         </div>
       )}
 
+      <RamadanBanner />
+
+      <SearchBar
+        value={searchQuery}
+        onChange={setSearchQuery}
+      />
+
+      <CategoryFilter
+        categories={Array.from(
+          new Set(
+            visibleProducts
+              .map((product) => product.category)
+              .filter(Boolean)
+          )
+        ).map((category) => [category, category])}
+        active={activeCategory}
+        onChange={setActiveCategory}
+      />
+
       <MenuGrid
-        products={visibleProducts}
+        products={visibleProducts.filter((product) => {
+          const query = searchQuery.trim().toLowerCase();
+          const matchesCategory =
+            !activeCategory || product.category === activeCategory;
+
+          if (!matchesCategory) return false;
+          if (!query) return true;
+
+          return (
+            String(product.name || '').toLowerCase().includes(query) ||
+            String(product.description || '').toLowerCase().includes(query)
+          );
+        })}
         onSelect={setSel}
         loading={loading}
       />
@@ -342,12 +373,41 @@ export default function CustomerApp() {
       {cart.length > 0 && (
         <div
           onClick={() => setShowCart(true)}
-          className="fixed bottom-4 left-4 right-4 max-w-lg mx-auto bg-teal-700 text-white p-4 rounded-2xl shadow-2xl flex justify-between items-center cursor-pointer z-30"
+          className="fixed bottom-20 left-4 right-4 max-w-lg mx-auto bg-teal-700 text-white p-4 rounded-2xl shadow-2xl flex justify-between items-center cursor-pointer z-30"
         >
           <span className="font-bold">🛒 عرض السلة ({cart.length})</span>
           <span className="font-black text-lg">{cartTotal} SR</span>
         </div>
       )}
+
+      <BottomNav
+        active={activeNav}
+        cartCount={cart.length}
+        hasTracking={Boolean(trackingInfo)}
+        onChange={(tab) => {
+          setActiveNav(tab);
+
+          if (tab === 'home') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+
+          if (tab === 'cart') {
+            if (cart.length > 0) {
+              setShowCart(true);
+            } else {
+              toast.info('السلة فارغة');
+            }
+          }
+
+          if (tab === 'tracking') {
+            if (trackingInfo) {
+              setShowTracking(true);
+            } else {
+              toast.info('لا يوجد طلب حالي للتتبع');
+            }
+          }
+        }}
+      />
 
       <ProductModal product={sel} onClose={() => setSel(null)} onAdd={handleAddToCart} />
 

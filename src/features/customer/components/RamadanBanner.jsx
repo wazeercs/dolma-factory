@@ -2,7 +2,22 @@ import React, { useState, useEffect } from 'react';
 
 export default function RamadanBanner({ onClose }) {
   const [visible, setVisible] = useState(() => {
-    return localStorage.getItem('dolma_ramadan_banner_dismissed') !== 'true';
+    const dismissed =
+      localStorage.getItem('dolma_ramadan_banner_dismissed') === 'true';
+
+    if (dismissed) return false;
+
+    try {
+      const formatter = new Intl.DateTimeFormat(
+        'en-US-u-ca-islamic-umalqura',
+        { month: 'numeric' }
+      );
+
+      const month = Number(formatter.format(new Date()));
+      return month === 9;
+    } catch {
+      return false;
+    }
   });
 
   const handleDismiss = () => {

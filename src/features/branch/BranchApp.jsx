@@ -162,7 +162,7 @@ export default function BranchApp() {
       )}
 
       {printOrder && (
-        <ReceiptModal order={printOrder} onClose={() => setPrintOrder(null)} />
+        <ReceiptModal order={printOrder} branchName={currentBranchName} onClose={() => setPrintOrder(null)} />
       )}
     </div>
   );

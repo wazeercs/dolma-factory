@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ReceiptModal({ order, onClose }) {
+export default function ReceiptModal({ order, branchName, onClose }) {
   if (!order) return null;
 
   return (
@@ -8,7 +8,7 @@ export default function ReceiptModal({ order, onClose }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto">
         <div id="receipt-print" className="p-6 text-center bg-white" dir="rtl">
           <h2 className="font-black text-xl text-black">دولمه فاكتوري</h2>
-          <p className="text-xs text-gray-500">فرع الرياض</p>
+          <p className="text-xs text-gray-500">{branchName || "الفرع"}</p>
           <div className="border-t border-dashed my-3"></div>
           <div className="text-right text-xs space-y-1 text-black">
             <div className="flex justify-between"><span>رقم الطلب:</span><b>#{order.order_number}</b></div>

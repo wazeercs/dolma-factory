@@ -45,19 +45,44 @@ function useRealtimeChannel(channelName, configs, callback, deps = [], enabled =
           callbackInFlightRef.current = false;
 
           if (callbackQueuedRef.current && callbackTimerRef.current === null) {
-            callbackTimerRef.current = setTimeout(async () => {
+            callbackTimerRef.current = setTimeout(() => {
               callbackTimerRef.current = null;
 
-              if (callbackInFlightRef.current) return;
+              if (callbackInFlightRef.current) {
+                callbackQueuedRef.current = true;
+                return;
+              }
 
               callbackInFlightRef.current = true;
               callbackQueuedRef.current = false;
 
-              try {
-                await callback(latestPayloadRef.current);
-              } finally {
-                callbackInFlightRef.current = false;
-              }
+              Promise.resolve(callback(latestPayloadRef.current))
+                .catch(() => {})
+                .finally(() => {
+                  callbackInFlightRef.current = false;
+
+                  if (
+                    callbackQueuedRef.current &&
+                    callbackTimerRef.current === null
+                  ) {
+                    callbackTimerRef.current = setTimeout(() => {
+                      callbackTimerRef.current = null;
+                      if (callbackInFlightRef.current) {
+                        callbackQueuedRef.current = true;
+                        return;
+                      }
+
+                      callbackInFlightRef.current = true;
+                      callbackQueuedRef.current = false;
+
+                      Promise.resolve(callback(latestPayloadRef.current))
+                        .catch(() => {})
+                        .finally(() => {
+                          callbackInFlightRef.current = false;
+                        });
+                    }, 150);
+                  }
+                });
             }, 150);
           }
         }
@@ -180,24 +205,11 @@ export function useOrderTracking(orderNumber, phone) {
   useEffect(() => {
     if (!orderNumber || !phone) return;
 
-    const load = async () => {
-      try {
-        const data = await withRetry(() => trackOrder(orderNumber, phone), {
-          maxAttempts: 2,
-          shouldRetry: isRetryableError,
-        });
-        setOrder(data);
-        setError(null);
-      } catch (err) {
-        setError(err.message);
-      }
-    };
-
     let interval = null;
 
     const startPolling = () => {
       if (interval !== null) return;
-      interval = setInterval(load, 5000);
+      interval = setInterval(checkAndPoll, 7000);
     };
 
     const stopPolling = () => {

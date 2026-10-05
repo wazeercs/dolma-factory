@@ -16,18 +16,38 @@ export default function LoyaltyBadge({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
+    setLoyalty(null);
+    setLoading(false);
+    onPointsChange?.(0);
+
     if (!phone || phone.length < 10) {
-      setLoyalty(null);
-      onPointsChange?.(0);
-      return;
+      return undefined;
     }
 
     setLoading(true);
 
     getLoyaltyInfo(phone)
-      .then((data) => setLoyalty(data))
-      .catch(() => setLoyalty(null))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) {
+          setLoyalty(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoyalty(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [phone, onPointsChange]);
 
   const maxByCart = useMemo(() => {

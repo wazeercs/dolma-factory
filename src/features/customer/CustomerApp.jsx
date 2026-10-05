@@ -59,6 +59,12 @@ export default function CustomerApp() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeNav, setActiveNav] = useState('home');
 
+  const clearCartDependentBenefits = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setLoyaltyPoints(0);
+  };
+
   const trackingOrder = useOrderTracking(
     trackingInfo?.number,
     trackingInfo?.phone
@@ -80,7 +86,7 @@ export default function CustomerApp() {
   const handleAddToCart = (product, flavor, variant, qty) => {
     if (!variant) return toast.warning('الرجاء اختيار الحجم');
     if (product.flavors?.length > 0 && !flavor) return toast.warning('الرجاء اختيار النكهة');
-    setCart([...cart, {
+    setCart((currentCart) => [...currentCart, {
       productId: product.id,
       variantId: variant.id,
       flavorId: flavor?.id || null,
@@ -91,6 +97,7 @@ export default function CustomerApp() {
       quantity: qty,
       image: product.image_url,
     }]);
+    clearCartDependentBenefits();
     setSel(null);
     toast.success('تمت الإضافة إلى السلة 🛒');
   };
@@ -319,7 +326,16 @@ export default function CustomerApp() {
             value={selectedBranch.id}
             onChange={(e) => {
               const b = branches.find((x) => x.id === e.target.value);
-              if (b) setSelectedBranch(b);
+              if (!b) return;
+
+              if (b.id !== selectedBranch?.id) {
+                setCart([]);
+                clearCartDependentBenefits();
+                setShowCart(false);
+                setShowCheckout(false);
+              }
+
+              setSelectedBranch(b);
             }}
             className="text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-white border dark:border-gray-600 rounded-lg px-2 py-1 font-bold"
           >
@@ -420,7 +436,13 @@ export default function CustomerApp() {
           cart={cart}
           cartTotal={cartTotal}
           onClose={() => setShowCart(false)}
-          onRemove={(i) => setCart(cart.filter((_, idx) => idx !== i))}
+          onRemove={(i) => {
+            setCart((currentCart) => currentCart.filter((_, idx) => idx !== i));
+            clearCartDependentBenefits();
+            if (cart.length === 1) {
+              setShowCart(false);
+            }
+          }}
           onCheckout={() => setShowCheckout(true)}
         />
       )}

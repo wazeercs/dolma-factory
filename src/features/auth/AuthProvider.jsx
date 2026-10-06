@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { ROLES } from '../../lib/constants';
+import { getSafeErrorMessage } from '../../lib/errors';
 
 const AuthContext = createContext(null);
 
@@ -21,7 +22,7 @@ export function AuthProvider({ children }) {
 
     if (error) {
       console.error('Profile fetch error:', error);
-      setError(error.message);
+      setError(getSafeErrorMessage(error, 'تعذر تحميل بيانات الحساب'));
       return null;
     }
 
@@ -78,12 +79,10 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        const map = {
-          'Invalid login credentials': 'البريد أو كلمة المرور غير صحيحة',
-          'Email not confirmed': 'البريد غير مؤكد',
-          'Too many requests': 'محاولات كثيرة. حاول لاحقاً',
-        };
-        const msg = map[error.message] || error.message;
+        const msg = getSafeErrorMessage(
+          error,
+          'تعذر تسجيل الدخول حاليًا. حاول مرة أخرى.'
+        );
         setError(msg);
         return { success: false, error: msg };
       }
@@ -107,7 +106,10 @@ export function AuthProvider({ children }) {
       }
       return { success: false, error: 'فشل تسجيل الدخول' };
     } catch (err) {
-      const msg = err.message || 'حدث خطأ';
+      const msg = getSafeErrorMessage(
+        err,
+        'تعذر تسجيل الدخول حاليًا. حاول مرة أخرى.'
+      );
       setError(msg);
       return { success: false, error: msg };
     } finally {

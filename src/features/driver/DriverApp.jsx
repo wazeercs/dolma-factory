@@ -4,6 +4,7 @@ import { fetchDriverOrders, fetchDriverCompletedToday } from '../../services/sup
 import { updateOrderStatus, toggleDriverAvailability } from '../../hooks/useOrdersApi';
 import { useToast } from '../../components/Toast';
 import { useAuth } from '../auth/AuthProvider';
+import { getSafeErrorMessage } from '../../lib/errors';
 import DriverOrderCard from './components/DriverOrderCard';
 
 function getRiyadhStartOfDayIso() {
@@ -40,14 +41,14 @@ export default function DriverApp() {
 
       const [activeOrders, deliveredToday] = await Promise.all([
         fetchDriverOrders(driver.id, { onlyActive: true }),
-        fetchDriverCompletedToday(driver.id, startOfDay.toISOString()),
+        fetchDriverCompletedToday(driver.id, startOfDay),
       ]);
 
       setOrders(activeOrders);
       setCompletedToday(deliveredToday.length);
       setError(null);
     } catch (err) {
-      setError(err.message || 'فشل تحميل الطلبات');
+      setError(getSafeErrorMessage(err, 'فشل تحميل الطلبات'));
     }
   }, [driver?.id]);
 
@@ -64,7 +65,7 @@ export default function DriverApp() {
 
         const [activeOrders, deliveredToday] = await Promise.all([
           fetchDriverOrders(driver.id, { onlyActive: true }),
-          fetchDriverCompletedToday(driver.id, startOfDay.toISOString()),
+          fetchDriverCompletedToday(driver.id, startOfDay),
         ]);
 
         if (!cancelled) {
@@ -74,7 +75,7 @@ export default function DriverApp() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.message || 'فشل تحميل الطلبات');
+          setError(getSafeErrorMessage(err, 'فشل تحميل الطلبات'));
         }
       }
     };
@@ -126,7 +127,7 @@ export default function DriverApp() {
         .maybeSingle();
 
       if (error) {
-        setError(error.message);
+        setError(getSafeErrorMessage(error, 'تعذر تحميل بيانات المندوب'));
       } else if (!data) {
         setError('لم يتم ربط حسابك بأي مندوب. تواصل مع الإدارة.');
       } else {
@@ -162,7 +163,7 @@ export default function DriverApp() {
       setDriver((current) => ({ ...current, is_available: newState }));
       toast.success(newState ? 'أنت الآن متاح ✅' : 'أنت الآن مشغول ⏸');
     } catch (err) {
-      toast.error(err.message || 'فشل تحديث الحالة');
+      toast.error(getSafeErrorMessage(err, 'فشل تحديث الحالة'));
     } finally {
       setUpdatingAvailability(false);
     }
@@ -176,7 +177,7 @@ export default function DriverApp() {
       await updateOrderStatus(orderId, newStatus);
       toast.success(newStatus === 'delivered' ? 'تم التسليم بنجاح 🎉' : 'تم تحديث الطلب');
     } catch (err) {
-      toast.error(err.message || 'فشل تحديث الطلب');
+      toast.error(getSafeErrorMessage(err, 'فشل تحديث الطلب'));
     } finally {
       setUpdatingOrderId(null);
     }

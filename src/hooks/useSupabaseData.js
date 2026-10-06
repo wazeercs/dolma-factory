@@ -28,7 +28,7 @@ function useRealtimeChannel(channelName, configs, callback, deps = [], enabled =
 
       if (callbackTimerRef.current !== null) return;
 
-      callbackTimerRef.current = setTimeout(async () => {
+      const runCallback = async () => {
         callbackTimerRef.current = null;
 
         if (callbackInFlightRef.current) {
@@ -41,52 +41,19 @@ function useRealtimeChannel(channelName, configs, callback, deps = [], enabled =
 
         try {
           await callback(latestPayloadRef.current);
+        } catch {
+          // Keep realtime synchronization alive after callback failures.
         } finally {
           callbackInFlightRef.current = false;
 
-          if (callbackQueuedRef.current && callbackTimerRef.current === null) {
-            callbackTimerRef.current = setTimeout(() => {
-              callbackTimerRef.current = null;
-
-              if (callbackInFlightRef.current) {
-                callbackQueuedRef.current = true;
-                return;
-              }
-
-              callbackInFlightRef.current = true;
-              callbackQueuedRef.current = false;
-
-              Promise.resolve(callback(latestPayloadRef.current))
-                .catch(() => {})
-                .finally(() => {
-                  callbackInFlightRef.current = false;
-
-                  if (
-                    callbackQueuedRef.current &&
-                    callbackTimerRef.current === null
-                  ) {
-                    callbackTimerRef.current = setTimeout(() => {
-                      callbackTimerRef.current = null;
-                      if (callbackInFlightRef.current) {
-                        callbackQueuedRef.current = true;
-                        return;
-                      }
-
-                      callbackInFlightRef.current = true;
-                      callbackQueuedRef.current = false;
-
-                      Promise.resolve(callback(latestPayloadRef.current))
-                        .catch(() => {})
-                        .finally(() => {
-                          callbackInFlightRef.current = false;
-                        });
-                    }, 150);
-                  }
-                });
-            }, 150);
+          if (callbackQueuedRef.current) {
+            callbackQueuedRef.current = false;
+            callbackTimerRef.current = setTimeout(runCallback, 150);
           }
         }
-      }, 150);
+      };
+
+      callbackTimerRef.current = setTimeout(runCallback, 150);
     };
 
     configs.forEach(({ event, schema, table, filter }) => {

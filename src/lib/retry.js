@@ -1,58 +1,72 @@
 /**
- * Retry with Exponential Backoff
- * @param {Function} fn — async function to retry
- * @param {Object} opts
- * @param {number} opts.maxAttempts — default 3
- * @param {number} opts.baseDelayMs — default 1000
- * @param {Function} opts.shouldRetry — custom check (default: retry all errors)
+ * Retry with bounded exponential backoff and jitter.
  */
 export async function withRetry(fn, opts = {}) {
   const {
     maxAttempts = 3,
     baseDelayMs = 1000,
+    maxDelayMs = 8000,
     shouldRetry = () => true,
   } = opts;
 
-  let lastError;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  if (typeof fn !== 'function') {
+    throw new TypeError('fn must be a function');
+  }
+
+  const attempts = Math.max(1, Math.floor(Number(maxAttempts) || 1));
+  const baseDelay = Math.max(0, Number(baseDelayMs) || 0);
+  const maxDelay = Math.max(baseDelay, Number(maxDelayMs) || 0);
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      lastError = err;
+      if (attempt >= attempts || !shouldRetry(err, attempt)) {
+        throw err;
+      }
 
-      // لا نعيد المحاولة إذا:
-      // - خطأ منطقي (validation, unauthorized)
-      // - أو shouldRetry رجع false
-      if (!shouldRetry(err, attempt)) throw err;
+      const exponentialDelay = Math.min(
+        maxDelay,
+        baseDelay * Math.pow(2, attempt - 1)
+      );
 
-      if (attempt === maxAttempts) throw err;
+      const jitteredDelay = Math.round(
+        exponentialDelay * (0.8 + Math.random() * 0.4)
+      );
 
-      // Exponential backoff: 1s, 2s, 4s
-      const delay = baseDelayMs * Math.pow(2, attempt - 1);
-      await new Promise((r) => setTimeout(r, delay));
+      await new Promise((resolve) => setTimeout(resolve, jitteredDelay));
     }
   }
-  throw lastError;
 }
 
 /**
- * هل الخطأ يستحق إعادة المحاولة؟
+ * Return true only for likely transient network and server errors.
  */
 export function isRetryableError(err) {
   if (!err) return false;
-  const msg = String(err.message || err).toLowerCase();
-  
-  // أخطاء الشبكة
-  if (msg.includes('fetch') || msg.includes('network') || 
-      msg.includes('timeout') || msg.includes('failed to fetch')) return true;
-  
-  // أخطاء الـ 5xx
-  if (err.status >= 500 && err.status < 600) return true;
-  
-  // غير قابلة لإعادة المحاولة
-  if (msg.includes('invalid') || msg.includes('unauthorized') || 
-      msg.includes('not found') || msg.includes('rate') ||
-      msg.includes('تجاوزت') || msg.includes('غير صحيح')) return false;
-  
-  return false; // افتراضي: لا نعيد المحاولة
+
+  const message = String(err.message || err).toLowerCase();
+  const status = Number(err.status);
+
+  if (status >= 500 && status < 600) return true;
+
+  if (
+    status === 429 ||
+    (status >= 400 && status < 500)
+  ) {
+    return false;
+  }
+
+  if (
+    message.includes('failed to fetch') ||
+    message.includes('network') ||
+    message.includes('timeout') ||
+    message.includes('timed out') ||
+    message.includes('connection reset') ||
+    message.includes('load failed')
+  ) {
+    return true;
+  }
+
+  return err instanceof TypeError && message.includes('fetch');
 }

@@ -172,17 +172,12 @@ export function useOrderTracking(orderNumber, phone) {
   useEffect(() => {
     if (!orderNumber || !phone) return;
 
-    let interval = null;
+    let timeoutId = null;
+    let cancelled = false;
 
-    const startPolling = () => {
-      if (interval !== null) return;
-      interval = setInterval(checkAndPoll, 7000);
-    };
-
-    const stopPolling = () => {
-      if (interval !== null) {
-        clearInterval(interval);
-        interval = null;
+    const scheduleNext = () => {
+      if (!cancelled) {
+        timeoutId = setTimeout(checkAndPoll, 7000);
       }
     };
 
@@ -193,25 +188,32 @@ export function useOrderTracking(orderNumber, phone) {
           shouldRetry: isRetryableError,
         });
 
+        if (cancelled) return;
+
         setOrder(data);
         setError(null);
 
-        // إيقاف التحديث الدوري عند انتهاء الطلب
         if (['delivered', 'cancelled', 'rejected'].includes(data?.status)) {
-          stopPolling();
-        } else {
-          startPolling();
+          return;
         }
+
+        scheduleNext();
       } catch (err) {
-        setError(err.message);
-        startPolling();
+        if (cancelled) return;
+
+        setError(err?.message || 'Unable to track order');
+        scheduleNext();
       }
     };
 
     checkAndPoll();
 
     return () => {
-      stopPolling();
+      cancelled = true;
+
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [orderNumber, phone]);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { withRetry, isRetryableError } from '../lib/retry';
 import {
@@ -94,25 +94,38 @@ export function useProducts(branchId = null, enabled = true) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
     try {
       setError(null);
       const data = await withRetry(() => fetchProducts(branchId), {
         maxAttempts: 3,
         shouldRetry: isRetryableError,
       });
+
+      if (requestId !== requestIdRef.current) return;
       setProducts(data);
     } catch (err) {
-      setError(err.message || 'فشل تحميل المنتجات');
+      if (requestId === requestIdRef.current) {
+        setError(err.message || 'فشل تحميل المنتجات');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [branchId]);
 
   useEffect(() => {
     if (!enabled) return;
     load();
+
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [load, enabled]);
 
   useRealtimeChannel(
@@ -134,25 +147,38 @@ export function useOrders(branchId = null, onlyActive = false, enabled = true) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
     try {
       setError(null);
       const data = await withRetry(
         () => fetchOrders({ branchId, onlyActive }),
         { maxAttempts: 3, shouldRetry: isRetryableError }
       );
+
+      if (requestId !== requestIdRef.current) return;
       setOrders(data);
     } catch (err) {
-      setError(err.message || 'فشل تحميل الطلبات');
+      if (requestId === requestIdRef.current) {
+        setError(err.message || 'فشل تحميل الطلبات');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [branchId, onlyActive]);
 
   useEffect(() => {
     if (!enabled) return;
     load();
+
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [load, enabled]);
 
   useRealtimeChannel(
@@ -228,25 +254,38 @@ export function useDrivers(branchId = null, enabled = true) {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
     try {
       setError(null);
       const data = await withRetry(() => fetchDrivers(branchId), {
         maxAttempts: 3,
         shouldRetry: isRetryableError,
       });
+
+      if (requestId !== requestIdRef.current) return;
       setDrivers(data);
     } catch (err) {
-      setError(err.message || 'فشل تحميل المناديب');
+      if (requestId === requestIdRef.current) {
+        setError(err.message || 'فشل تحميل المناديب');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [branchId]);
 
   useEffect(() => {
     if (!enabled) return;
     load();
+
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [load, enabled]);
 
   useRealtimeChannel(
@@ -263,23 +302,36 @@ export function useDrivers(branchId = null, enabled = true) {
 export function useBranches() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
     try {
       const data = await withRetry(() => fetchActiveBranches(), {
         maxAttempts: 3,
         shouldRetry: isRetryableError,
       });
+
+      if (requestId !== requestIdRef.current) return;
       setBranches(data);
     } catch (err) {
-      console.error('branches:', err);
+      if (requestId === requestIdRef.current) {
+        console.error('branches:', err);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     load();
+
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [load]);
 
   useRealtimeChannel(

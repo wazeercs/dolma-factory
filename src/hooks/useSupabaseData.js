@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { withRetry, isRetryableError } from '../lib/retry';
 import {
@@ -11,49 +11,53 @@ import {
 
 function useRealtimeChannel(channelName, configs, callback, deps = [], enabled = true) {
   const [status, setStatus] = useState('connecting');
-  const channelRef = useRef(null);
-  const callbackTimerRef = useRef(null);
-  const callbackInFlightRef = useRef(false);
-  const callbackQueuedRef = useRef(false);
-  const latestPayloadRef = useRef(null);
 
   useEffect(() => {
     if (!enabled || !channelName || !configs?.length) return;
-    if (channelRef.current) supabase.removeChannel(channelRef.current);
+
+    let active = true;
+    let timer = null;
+    let callbackInFlight = false;
+    let callbackQueued = false;
+    let latestPayload = null;
 
     let channel = supabase.channel(channelName);
 
     const scheduleCallback = (payload) => {
-      latestPayloadRef.current = payload;
+      if (!active) return;
 
-      if (callbackTimerRef.current !== null) return;
+      latestPayload = payload;
+
+      if (timer !== null) return;
 
       const runCallback = async () => {
-        callbackTimerRef.current = null;
+        timer = null;
 
-        if (callbackInFlightRef.current) {
-          callbackQueuedRef.current = true;
+        if (!active) return;
+
+        if (callbackInFlight) {
+          callbackQueued = true;
           return;
         }
 
-        callbackInFlightRef.current = true;
-        callbackQueuedRef.current = false;
+        callbackInFlight = true;
+        callbackQueued = false;
 
         try {
-          await callback(latestPayloadRef.current);
+          await callback(latestPayload);
         } catch {
           // Keep realtime synchronization alive after callback failures.
         } finally {
-          callbackInFlightRef.current = false;
+          callbackInFlight = false;
 
-          if (callbackQueuedRef.current) {
-            callbackQueuedRef.current = false;
-            callbackTimerRef.current = setTimeout(runCallback, 150);
+          if (active && callbackQueued) {
+            callbackQueued = false;
+            timer = setTimeout(runCallback, 150);
           }
         }
       };
 
-      callbackTimerRef.current = setTimeout(runCallback, 150);
+      timer = setTimeout(runCallback, 150);
     };
 
     configs.forEach(({ event, schema, table, filter }) => {
@@ -64,22 +68,22 @@ function useRealtimeChannel(channelName, configs, callback, deps = [], enabled =
       );
     });
 
-    channel.subscribe((s) => setStatus(s));
-    channelRef.current = channel;
+    channel.subscribe((s) => {
+      if (active) setStatus(s);
+    });
 
     return () => {
-      if (callbackTimerRef.current !== null) {
-        clearTimeout(callbackTimerRef.current);
-        callbackTimerRef.current = null;
+      active = false;
+
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
       }
 
-      callbackQueuedRef.current = false;
-      latestPayloadRef.current = null;
+      callbackQueued = false;
+      latestPayload = null;
 
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      supabase.removeChannel(channel);
     };
   }, deps);
 

@@ -173,18 +173,6 @@ export async function setOrderStatus(orderId, newStatus, driverId = null, driver
 
 
 
-export async function toggleProductStock(productId, inStock) {
-  const { error } = await supabase.from('products')
-    .update({ in_stock: inStock }).eq('id', productId);
-  if (error) throw handleSupabaseError(error, 'toggleStock');
-}
-
-export async function updateVariantPrice(variantId, price) {
-  const { error } = await supabase.from('product_variants')
-    .update({ price: Number(price) }).eq('id', variantId);
-  if (error) throw handleSupabaseError(error, 'updatePrice');
-}
-
 export async function trackOrder(orderNumber, phone) {
   const { data, error } = await supabase.rpc('track_order', {
     p_order_number: orderNumber,
